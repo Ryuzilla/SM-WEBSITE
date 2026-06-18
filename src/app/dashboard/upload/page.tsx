@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
+  ArrowRight,
   CheckCircle2,
   FileSpreadsheet,
   Loader2,
@@ -17,6 +18,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -24,27 +32,36 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { parseWorkbook, validateMappedRows, type ParsedSheet } from "@/lib/excel-import";
 import {
-  parseWorkbook,
-  validateSheet,
-  type ParsedSheet,
-  type ValidationResult,
-} from "@/lib/excel-import";
-import { REQUIRED_COLUMNS } from "@/lib/types";
+  applyMapping,
+  autoDetectMapping,
+  validateMapping,
+  TARGET_FIELDS,
+  type ColumnMapping,
+} from "@/lib/column-mapping";
+
+const NONE = "__none__";
 
 export default function UploadPage() {
   const router = useRouter();
   const { profile } = useDashboard();
   const inputRef = React.useRef<HTMLInputElement>(null);
 
-  const [fileName, setFileName] = React.useState<string>("");
+  const [fileName, setFileName] = React.useState("");
   const [sheet, setSheet] = React.useState<ParsedSheet | null>(null);
-  const [validation, setValidation] = React.useState<ValidationResult | null>(
-    null,
-  );
+  const [mapping, setMapping] = React.useState<ColumnMapping>({});
   const [parsing, setParsing] = React.useState(false);
   const [importing, setImporting] = React.useState(false);
   const [dragOver, setDragOver] = React.useState(false);
+
+  // Derived: mapped rows + validation, recomputed whenever mapping changes.
+  const { mappedRows, validation } = React.useMemo(() => {
+    if (!sheet) return { mappedRows: [], validation: null };
+    const rows = applyMapping(sheet.rows, mapping);
+    const mappingErrors = validateMapping(mapping);
+    return { mappedRows: rows, validation: validateMappedRows(rows, mappingErrors) };
+  }, [sheet, mapping]);
 
   if (profile.role !== "admin") {
     return (
@@ -73,11 +90,11 @@ export default function UploadPage() {
     setFileName(file.name);
     try {
       const parsed = await parseWorkbook(file);
-      const result = validateSheet(parsed);
       setSheet(parsed);
-      setValidation(result);
-      if (result.ok) toast.success(`Validated ${result.validRows} rows`);
-      else toast.warning("Validation found issues — see details below");
+      setMapping(autoDetectMapping(parsed.headers));
+      toast.success(
+        `Read ${parsed.rows.length} rows — review the column mapping below`,
+      );
     } catch (err) {
       toast.error("Failed to read file");
       console.error(err);
@@ -86,14 +103,23 @@ export default function UploadPage() {
     }
   }
 
+  function setFieldMapping(field: string, source: string) {
+    setMapping((prev) => {
+      const next = { ...prev };
+      if (source === NONE) delete next[field as keyof ColumnMapping];
+      else next[field as keyof ColumnMapping] = source;
+      return next;
+    });
+  }
+
   async function handleImport() {
-    if (!sheet || !validation?.ok) return;
+    if (!validation?.ok) return;
     setImporting(true);
     try {
       const res = await fetch("/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows: sheet.rows }),
+        body: JSON.stringify({ rows: mappedRows }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Import failed");
@@ -103,7 +129,7 @@ export default function UploadPage() {
           : `Imported ${data.imported} rows successfully`,
       );
       reset();
-      router.refresh(); // re-fetch dashboard data
+      router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Import failed");
     } finally {
@@ -113,18 +139,20 @@ export default function UploadPage() {
 
   function reset() {
     setSheet(null);
-    setValidation(null);
+    setMapping({});
     setFileName("");
     if (inputRef.current) inputRef.current.value = "";
   }
 
-  const previewRows = sheet?.rows.slice(0, 8) ?? [];
+  const headers = sheet?.headers ?? [];
+  const previewRows = mappedRows.slice(0, 8);
+  const mappedFieldKeys = TARGET_FIELDS.filter((f) => mapping[f.key]).map((f) => f.key);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Upload Sales Data"
-        description="Import an Excel (.xlsx) file. Columns are validated automatically before import."
+        description="Import an Excel (.xlsx) file. Columns are auto-detected and you can adjust the mapping before importing."
       />
 
       {/* Dropzone */}
@@ -154,9 +182,7 @@ export default function UploadPage() {
               )}
             </div>
             <div>
-              <p className="font-medium">
-                Drag & drop your .xlsx file here, or
-              </p>
+              <p className="font-medium">Drag & drop your .xlsx file here, or</p>
               <Button
                 variant="link"
                 onClick={() => inputRef.current?.click()}
@@ -181,22 +207,76 @@ export default function UploadPage() {
               }}
             />
           </div>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-medium">Required columns:</span>
-            {REQUIRED_COLUMNS.map((c) => (
-              <Badge key={c} variant="outline">
-                {c}
-              </Badge>
-            ))}
-            <Button asChild variant="link" size="sm" className="h-auto px-1">
-              <a href="/sample-sales-template.xlsx" download>
-                Download template
-              </a>
-            </Button>
-          </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            Any column names work — including Thai or ERP exports. We detect the
+            mapping automatically and you confirm it below.{" "}
+            <a href="/sample-sales-template.xlsx" download className="text-primary underline">
+              Download a sample template
+            </a>
+            .
+          </p>
         </CardContent>
       </Card>
+
+      {/* Column mapping */}
+      {sheet && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ArrowRight className="h-5 w-5 text-primary" />
+              Map Your Columns
+              <Badge variant="secondary">
+                {mappedFieldKeys.length}/{TARGET_FIELDS.length} mapped
+              </Badge>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Match each dashboard field to a column from your file. Required
+              fields are marked. Unmapped optional fields use sensible defaults.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {TARGET_FIELDS.map((field) => (
+                <div key={field.key} className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    {field.label}
+                    {field.required ? (
+                      <Badge variant="outline" className="text-[10px]">
+                        required
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <Select
+                    value={mapping[field.key] ?? NONE}
+                    onValueChange={(v) => setFieldMapping(field.key, v)}
+                  >
+                    <SelectTrigger
+                      className={
+                        field.required && !mapping[field.key]
+                          ? "border-destructive"
+                          : undefined
+                      }
+                    >
+                      <SelectValue placeholder="— Not mapped —" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>— Not mapped —</SelectItem>
+                      {headers.map((h) => (
+                        <SelectItem key={h} value={h}>
+                          {h}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {field.hint && (
+                    <p className="text-xs text-muted-foreground">{field.hint}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Validation summary */}
       {validation && (
@@ -215,9 +295,9 @@ export default function UploadPage() {
             <div className="grid gap-4 sm:grid-cols-3">
               <Stat label="Valid rows" value={validation.validRows} good />
               <Stat
-                label="Missing columns"
-                value={validation.missingColumns.length}
-                bad={validation.missingColumns.length > 0}
+                label="Mapping issues"
+                value={validation.mappingErrors.length}
+                bad={validation.mappingErrors.length > 0}
               />
               <Stat
                 label="Row errors"
@@ -226,12 +306,14 @@ export default function UploadPage() {
               />
             </div>
 
-            {validation.missingColumns.length > 0 && (
+            {validation.mappingErrors.length > 0 && (
               <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-                <p className="font-medium text-destructive">Missing columns:</p>
-                <p className="text-muted-foreground">
-                  {validation.missingColumns.join(", ")}
-                </p>
+                <p className="font-medium text-destructive">Fix the mapping:</p>
+                <ul className="list-inside list-disc text-muted-foreground">
+                  {validation.mappingErrors.map((e) => (
+                    <li key={e}>{e}</li>
+                  ))}
+                </ul>
               </div>
             )}
 
@@ -239,9 +321,7 @@ export default function UploadPage() {
               <div className="max-h-40 overflow-auto rounded-lg border bg-muted/30 p-3 text-sm scrollbar-thin">
                 {validation.rowErrors.map((e) => (
                   <p key={e.row} className="text-muted-foreground">
-                    <span className="font-medium text-foreground">
-                      Row {e.row}:
-                    </span>{" "}
+                    <span className="font-medium text-foreground">Row {e.row}:</span>{" "}
                     {e.message}
                   </p>
                 ))}
@@ -249,10 +329,7 @@ export default function UploadPage() {
             )}
 
             <div className="flex items-center gap-3">
-              <Button
-                onClick={handleImport}
-                disabled={!validation.ok || importing}
-              >
+              <Button onClick={handleImport} disabled={!validation.ok || importing}>
                 {importing && <Loader2 className="h-4 w-4 animate-spin" />}
                 Import {validation.validRows} rows
               </Button>
@@ -264,14 +341,14 @@ export default function UploadPage() {
         </Card>
       )}
 
-      {/* Preview */}
+      {/* Mapped preview */}
       {sheet && previewRows.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>
-              Data Preview{" "}
+              Mapped Preview{" "}
               <span className="text-sm font-normal text-muted-foreground">
-                (first {previewRows.length} of {sheet.rows.length} rows)
+                (first {previewRows.length} of {mappedRows.length} rows, as imported)
               </span>
             </CardTitle>
           </CardHeader>
@@ -279,17 +356,19 @@ export default function UploadPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  {sheet.headers.map((h) => (
-                    <TableHead key={h}>{h}</TableHead>
+                  {TARGET_FIELDS.map((f) => (
+                    <TableHead key={f.key}>{f.label}</TableHead>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {previewRows.map((row, i) => (
                   <TableRow key={i}>
-                    {sheet.headers.map((h) => (
-                      <TableCell key={h} className="whitespace-nowrap">
-                        {String(row[h] ?? "")}
+                    {TARGET_FIELDS.map((f) => (
+                      <TableCell key={f.key} className="whitespace-nowrap">
+                        {String(row[f.key] ?? "") || (
+                          <span className="text-muted-foreground/50">—</span>
+                        )}
                       </TableCell>
                     ))}
                   </TableRow>
