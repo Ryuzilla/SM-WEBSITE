@@ -50,9 +50,8 @@ export function validateMappedRows(
         errs.push("invalid or missing Date");
       if (!row["Customer_Name"] && !row["Company_Name"])
         errs.push("missing Customer/Company");
-      if (toNumber(row["Quantity"]) <= 0) errs.push("Quantity must be > 0");
-      if (toNumber(row["Sales_Amount"]) < 0)
-        errs.push("Sales_Amount must be >= 0");
+      // NB: Quantity / Sales_Amount may be zero or negative — these are
+      // legitimate returns / credit notes and are kept (they reduce revenue).
 
       if (errs.length) {
         if (rowErrors.length < 50)

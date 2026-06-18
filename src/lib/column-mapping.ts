@@ -31,7 +31,7 @@ export const TARGET_FIELDS: TargetField[] = [
     label: "Invoice No.",
     required: false,
     hint: "If your file has no invoice/document number, leave unmapped — one will be generated per row.",
-    aliases: ["invoiceno", "docno", "billno", "voucher", "milvc", "milno", "เลขที่", "เลขที่เอกสาร", "เลขที่ใบกำกับ"],
+    aliases: ["milsto", "invoiceno", "docno", "billno", "voucher", "milvc", "milno", "เลขที่", "เลขที่เอกสาร", "เลขที่ใบกำกับ"],
   },
   {
     key: "Customer_Name",
@@ -56,8 +56,10 @@ export const TARGET_FIELDS: TargetField[] = [
     key: "Product_Code",
     label: "Product Code",
     required: false,
-    hint: "Either Product Code or Product Name must be mapped.",
-    aliases: ["stkcode2", "stkcode", "productcode", "itemcode", "milstk", "รหัสสินค้า"],
+    hint: "Used to look up the product name from a product master sheet.",
+    // NB: "MILstk" is the product code in these ERP exports; "STKcode2" is the
+    // supplier/creditor code, so it is intentionally excluded here.
+    aliases: ["milstk", "productcode", "stkcode", "itemcode", "รหัสสินค้า"],
   },
   {
     key: "Product_Name",

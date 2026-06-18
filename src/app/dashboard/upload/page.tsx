@@ -6,6 +6,8 @@ import {
   ArrowRight,
   CheckCircle2,
   FileSpreadsheet,
+  Layers,
+  Link2,
   Loader2,
   ShieldAlert,
   Upload,
@@ -32,7 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { parseWorkbook, validateMappedRows, type ParsedSheet } from "@/lib/excel-import";
+import { validateMappedRows } from "@/lib/excel-import";
 import {
   applyMapping,
   autoDetectMapping,
@@ -40,28 +42,71 @@ import {
   TARGET_FIELDS,
   type ColumnMapping,
 } from "@/lib/column-mapping";
+import {
+  buildCustomerMap,
+  buildProductMap,
+  classifySheet,
+  enrichRows,
+  joinStats,
+  parseAllSheets,
+  type SheetData,
+  type SheetRole,
+} from "@/lib/sales-lookups";
 
 const NONE = "__none__";
+
+const ROLE_LABELS: Record<SheetRole, string> = {
+  sales: "Sales transactions",
+  products: "Product list (master)",
+  customers: "Customer list (master)",
+  ignore: "Ignore",
+};
 
 export default function UploadPage() {
   const router = useRouter();
   const { profile } = useDashboard();
   const inputRef = React.useRef<HTMLInputElement>(null);
 
-  const [fileName, setFileName] = React.useState("");
-  const [sheet, setSheet] = React.useState<ParsedSheet | null>(null);
+  const [sheets, setSheets] = React.useState<SheetData[]>([]);
+  const [roles, setRoles] = React.useState<SheetRole[]>([]);
   const [mapping, setMapping] = React.useState<ColumnMapping>({});
   const [parsing, setParsing] = React.useState(false);
   const [importing, setImporting] = React.useState(false);
   const [dragOver, setDragOver] = React.useState(false);
 
-  // Derived: mapped rows + validation, recomputed whenever mapping changes.
-  const { mappedRows, validation } = React.useMemo(() => {
-    if (!sheet) return { mappedRows: [], validation: null };
-    const rows = applyMapping(sheet.rows, mapping);
+  const salesIndex = roles.findIndex((r) => r === "sales");
+  const salesSheet = salesIndex >= 0 ? sheets[salesIndex] : null;
+
+  // Build lookup maps by merging all sheets assigned the products/customers role.
+  const { productMap, customerMap } = React.useMemo(() => {
+    const products = new Map();
+    const customers = new Map();
+    sheets.forEach((s, i) => {
+      if (roles[i] === "products")
+        buildProductMap(s).forEach((v, k) => products.set(k, v));
+      if (roles[i] === "customers")
+        buildCustomerMap(s).forEach((v, k) => customers.set(k, v));
+    });
+    return { productMap: products, customerMap: customers };
+  }, [sheets, roles]);
+
+  // Map + enrich + validate the sales sheet whenever inputs change.
+  const { canonicalRows, validation, stats } = React.useMemo(() => {
+    if (!salesSheet)
+      return { canonicalRows: [], validation: null, stats: null };
+    const mapped = applyMapping(salesSheet.rows, mapping);
+    const s = joinStats(mapped, { products: productMap, customers: customerMap });
+    const enriched = enrichRows(mapped, {
+      products: productMap,
+      customers: customerMap,
+    });
     const mappingErrors = validateMapping(mapping);
-    return { mappedRows: rows, validation: validateMappedRows(rows, mappingErrors) };
-  }, [sheet, mapping]);
+    return {
+      canonicalRows: enriched,
+      validation: validateMappedRows(enriched, mappingErrors),
+      stats: s,
+    };
+  }, [salesSheet, mapping, productMap, customerMap]);
 
   if (profile.role !== "admin") {
     return (
@@ -72,8 +117,7 @@ export default function UploadPage() {
             <ShieldAlert className="h-10 w-10 text-amber-500" />
             <p className="text-lg font-semibold">Admin access required</p>
             <p className="max-w-sm text-sm text-muted-foreground">
-              Only administrators can import sales data. Contact your system
-              administrator if you need access.
+              Only administrators can import sales data.
             </p>
           </CardContent>
         </Card>
@@ -81,19 +125,27 @@ export default function UploadPage() {
     );
   }
 
-  async function handleFile(file: File) {
-    if (!file.name.match(/\.xlsx$/i)) {
-      toast.error("Please upload a .xlsx file");
+  async function handleFiles(files: FileList | File[]) {
+    const list = Array.from(files).filter((f) => /\.xlsx$/i.test(f.name));
+    if (list.length === 0) {
+      toast.error("Please upload .xlsx file(s)");
       return;
     }
     setParsing(true);
-    setFileName(file.name);
     try {
-      const parsed = await parseWorkbook(file);
-      setSheet(parsed);
-      setMapping(autoDetectMapping(parsed.headers));
+      const parsed: SheetData[] = [];
+      for (const file of list) parsed.push(...(await parseAllSheets(file)));
+      const nextSheets = [...sheets, ...parsed];
+      const nextRoles = [...roles, ...parsed.map((s) => classifySheet(s))];
+      setSheets(nextSheets);
+      setRoles(nextRoles);
+
+      // Auto-map the sales sheet's columns if one was detected.
+      const si = nextRoles.findIndex((r) => r === "sales");
+      if (si >= 0) setMapping(autoDetectMapping(nextSheets[si].headers));
+
       toast.success(
-        `Read ${parsed.rows.length} rows — review the column mapping below`,
+        `Loaded ${parsed.length} sheet(s) from ${list.length} file(s)`,
       );
     } catch (err) {
       toast.error("Failed to read file");
@@ -101,6 +153,15 @@ export default function UploadPage() {
     } finally {
       setParsing(false);
     }
+  }
+
+  function setRole(index: number, role: SheetRole) {
+    setRoles((prev) => {
+      const next = [...prev];
+      next[index] = role;
+      return next;
+    });
+    if (role === "sales") setMapping(autoDetectMapping(sheets[index].headers));
   }
 
   function setFieldMapping(field: string, source: string) {
@@ -119,7 +180,7 @@ export default function UploadPage() {
       const res = await fetch("/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows: mappedRows }),
+        body: JSON.stringify({ rows: canonicalRows }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Import failed");
@@ -138,21 +199,23 @@ export default function UploadPage() {
   }
 
   function reset() {
-    setSheet(null);
+    setSheets([]);
+    setRoles([]);
     setMapping({});
-    setFileName("");
     if (inputRef.current) inputRef.current.value = "";
   }
 
-  const headers = sheet?.headers ?? [];
-  const previewRows = mappedRows.slice(0, 8);
-  const mappedFieldKeys = TARGET_FIELDS.filter((f) => mapping[f.key]).map((f) => f.key);
+  const headers = salesSheet?.headers ?? [];
+  const previewRows = canonicalRows.slice(0, 8);
+  const mappedCount = TARGET_FIELDS.filter((f) => mapping[f.key]).length;
+  const matchPct = (n: number) =>
+    stats && stats.total ? Math.round((n / stats.total) * 100) : 0;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Upload Sales Data"
-        description="Import an Excel (.xlsx) file. Columns are auto-detected and you can adjust the mapping before importing."
+        description="Import Excel file(s). Multiple sheets and master/lookup lists are supported — product & customer codes are resolved to names automatically."
       />
 
       {/* Dropzone */}
@@ -167,8 +230,7 @@ export default function UploadPage() {
             onDrop={(e) => {
               e.preventDefault();
               setDragOver(false);
-              const file = e.dataTransfer.files?.[0];
-              if (file) handleFile(file);
+              if (e.dataTransfer.files?.length) handleFiles(e.dataTransfer.files);
             }}
             className={`flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-10 text-center transition-colors ${
               dragOver ? "border-primary bg-primary/5" : "border-border"
@@ -182,7 +244,9 @@ export default function UploadPage() {
               )}
             </div>
             <div>
-              <p className="font-medium">Drag & drop your .xlsx file here, or</p>
+              <p className="font-medium">
+                Drag & drop your .xlsx file(s) here, or
+              </p>
               <Button
                 variant="link"
                 onClick={() => inputRef.current?.click()}
@@ -191,47 +255,108 @@ export default function UploadPage() {
                 browse to upload
               </Button>
             </div>
-            {fileName && (
-              <Badge variant="secondary" className="gap-1">
-                <FileSpreadsheet className="h-3.5 w-3.5" /> {fileName}
-              </Badge>
-            )}
+            <p className="text-xs text-muted-foreground">
+              You can drop the sales file and the product/customer master files
+              together.
+            </p>
             <input
               ref={inputRef}
               type="file"
               accept=".xlsx"
+              multiple
               className="hidden"
               onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleFile(file);
+                if (e.target.files?.length) handleFiles(e.target.files);
               }}
             />
           </div>
-          <p className="mt-4 text-xs text-muted-foreground">
-            Any column names work — including Thai or ERP exports. We detect the
-            mapping automatically and you confirm it below.{" "}
-            <a href="/sample-sales-template.xlsx" download className="text-primary underline">
-              Download a sample template
-            </a>
-            .
-          </p>
         </CardContent>
       </Card>
 
-      {/* Column mapping */}
-      {sheet && (
+      {/* Detected sheets + roles */}
+      {sheets.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ArrowRight className="h-5 w-5 text-primary" />
-              Map Your Columns
+              <Layers className="h-5 w-5 text-primary" /> Detected Sheets
+              <Badge variant="secondary">{sheets.length}</Badge>
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              We auto-detect each sheet&apos;s role. Adjust if needed.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {sheets.map((s, i) => (
+              <div
+                key={i}
+                className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex items-center gap-2 text-sm">
+                  <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">{s.name}</span>
+                  <Badge variant="outline">{s.rows.length} rows</Badge>
+                </div>
+                <Select
+                  value={roles[i]}
+                  onValueChange={(v) => setRole(i, v as SheetRole)}
+                >
+                  <SelectTrigger className="w-full sm:w-56">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(ROLE_LABELS) as SheetRole[]).map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {ROLE_LABELS[r]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Lookup / join status */}
+      {salesSheet && (productMap.size > 0 || customerMap.size > 0) && stats && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Link2 className="h-5 w-5 text-primary" /> Lookup Join
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <JoinStat
+              label="Products resolved"
+              detail={`${productMap.size} in master`}
+              matched={stats.productsMatched}
+              total={stats.total}
+              pct={matchPct(stats.productsMatched)}
+            />
+            <JoinStat
+              label="Customers resolved"
+              detail={`${customerMap.size} in master`}
+              matched={stats.customersMatched}
+              total={stats.total}
+              pct={matchPct(stats.customersMatched)}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Column mapping (sales sheet) */}
+      {salesSheet && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ArrowRight className="h-5 w-5 text-primary" /> Map Sales Columns
               <Badge variant="secondary">
-                {mappedFieldKeys.length}/{TARGET_FIELDS.length} mapped
+                {mappedCount}/{TARGET_FIELDS.length} mapped
               </Badge>
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Match each dashboard field to a column from your file. Required
-              fields are marked. Unmapped optional fields use sensible defaults.
+              Customer &amp; product fields can hold codes — they are resolved to
+              names via the master sheets above.
             </p>
           </CardHeader>
           <CardContent>
@@ -240,11 +365,11 @@ export default function UploadPage() {
                 <div key={field.key} className="space-y-1.5">
                   <div className="flex items-center gap-2 text-sm font-medium">
                     {field.label}
-                    {field.required ? (
+                    {field.required && (
                       <Badge variant="outline" className="text-[10px]">
                         required
                       </Badge>
-                    ) : null}
+                    )}
                   </div>
                   <Select
                     value={mapping[field.key] ?? NONE}
@@ -268,9 +393,6 @@ export default function UploadPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  {field.hint && (
-                    <p className="text-xs text-muted-foreground">{field.hint}</p>
-                  )}
                 </div>
               ))}
             </div>
@@ -278,7 +400,7 @@ export default function UploadPage() {
         </Card>
       )}
 
-      {/* Validation summary */}
+      {/* Validation */}
       {validation && (
         <Card>
           <CardHeader>
@@ -321,7 +443,9 @@ export default function UploadPage() {
               <div className="max-h-40 overflow-auto rounded-lg border bg-muted/30 p-3 text-sm scrollbar-thin">
                 {validation.rowErrors.map((e) => (
                   <p key={e.row} className="text-muted-foreground">
-                    <span className="font-medium text-foreground">Row {e.row}:</span>{" "}
+                    <span className="font-medium text-foreground">
+                      Row {e.row}:
+                    </span>{" "}
                     {e.message}
                   </p>
                 ))}
@@ -334,21 +458,22 @@ export default function UploadPage() {
                 Import {validation.validRows} rows
               </Button>
               <Button variant="outline" onClick={reset} disabled={importing}>
-                Cancel
+                Reset
               </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Mapped preview */}
-      {sheet && previewRows.length > 0 && (
+      {/* Mapped + enriched preview */}
+      {salesSheet && previewRows.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>
               Mapped Preview{" "}
               <span className="text-sm font-normal text-muted-foreground">
-                (first {previewRows.length} of {mappedRows.length} rows, as imported)
+                (first {previewRows.length} of {canonicalRows.length} rows, as
+                imported)
               </span>
             </CardTitle>
           </CardHeader>
@@ -382,6 +507,41 @@ export default function UploadPage() {
   );
 }
 
+function JoinStat({
+  label,
+  detail,
+  matched,
+  total,
+  pct,
+}: {
+  label: string;
+  detail: string;
+  matched: number;
+  total: number;
+  pct: number;
+}) {
+  const tone =
+    pct >= 80 ? "text-emerald-600 dark:text-emerald-400" : pct > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground";
+  return (
+    <div className="rounded-lg border p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-medium">{label}</p>
+        <Badge variant={pct >= 80 ? "success" : pct > 0 ? "warning" : "secondary"}>
+          {pct}% matched
+        </Badge>
+      </div>
+      <p className={`mt-1 text-2xl font-bold ${tone}`}>
+        {matched}
+        <span className="text-base font-normal text-muted-foreground">
+          {" "}
+          / {total}
+        </span>
+      </p>
+      <p className="text-xs text-muted-foreground">{detail}</p>
+    </div>
+  );
+}
+
 function Stat({
   label,
   value,
@@ -398,11 +558,7 @@ function Stat({
       <p className="text-sm text-muted-foreground">{label}</p>
       <p
         className={`text-2xl font-bold ${
-          bad
-            ? "text-destructive"
-            : good
-              ? "text-emerald-600 dark:text-emerald-400"
-              : ""
+          bad ? "text-destructive" : good ? "text-emerald-600 dark:text-emerald-400" : ""
         }`}
       >
         {value}
