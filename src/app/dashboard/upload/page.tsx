@@ -107,6 +107,7 @@ export default function UploadPage() {
   const [deleteTo, setDeleteTo] = React.useState("");
   const [deleteColumn, setDeleteColumn] = React.useState("");
   const [deleteValue, setDeleteValue] = React.useState("");
+  const [confirmDeleteAll, setConfirmDeleteAll] = React.useState(false);
 
   const salesIndex = roles.findIndex((r) => r === "sales");
   const salesSheet = salesIndex >= 0 ? sheets[salesIndex] : null;
@@ -248,16 +249,24 @@ export default function UploadPage() {
     }
   }
 
+  const hasDeleteFilter = Boolean(deleteFrom || deleteTo || (deleteColumn && deleteValue));
+
   async function handleDelete() {
+    // Guard: refuse to wipe everything unless explicitly confirmed.
+    if (!hasDeleteFilter && !confirmDeleteAll) {
+      toast.error("กรุณาเลือกเงื่อนไข หรือติ๊กยืนยันการลบทั้งหมด");
+      return;
+    }
     setDeleting(true);
     try {
-      const body: Record<string, string> = {};
+      const body: Record<string, string | boolean> = {};
       if (deleteFrom) body.dateFrom = deleteFrom;
       if (deleteTo) body.dateTo = deleteTo;
       if (deleteColumn && deleteValue) {
         body.column = deleteColumn;
         body.value = deleteValue;
       }
+      if (!hasDeleteFilter) body.deleteAll = true;
       const res = await fetch("/api/sales/delete", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -271,6 +280,7 @@ export default function UploadPage() {
       setDeleteTo("");
       setDeleteColumn("");
       setDeleteValue("");
+      setConfirmDeleteAll(false);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Delete failed");
@@ -645,15 +655,32 @@ export default function UploadPage() {
                     }
                     return parts.length
                       ? `จะลบข้อมูลที่ตรงเงื่อนไข: ${parts.join(" และ ")}`
-                      : "⚠️ จะลบข้อมูลทั้งหมดในตาราง sales";
+                      : "⚠️ ไม่ได้เลือกเงื่อนไข — จะลบข้อมูลทั้งหมดในตาราง sales";
                   })()}
                 </p>
+                {!hasDeleteFilter && (
+                  <label className="flex items-center gap-2 rounded-lg border border-destructive/40 px-3 py-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={confirmDeleteAll}
+                      onChange={(e) => setConfirmDeleteAll(e.target.checked)}
+                      className="h-4 w-4 accent-destructive"
+                    />
+                    <span className="font-medium text-destructive">
+                      ฉันเข้าใจ และต้องการลบข้อมูลทั้งหมด
+                    </span>
+                  </label>
+                )}
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting}>
                   ยกเลิก
                 </Button>
-                <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+                <Button
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={deleting || (!hasDeleteFilter && !confirmDeleteAll)}
+                >
                   {deleting && <Loader2 className="h-4 w-4 animate-spin" />}
                   ยืนยันลบ
                 </Button>
