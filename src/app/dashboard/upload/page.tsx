@@ -76,6 +76,18 @@ const ROLE_LABELS: Record<SheetRole, string> = {
   ignore: "Ignore",
 };
 
+// Columns the user may delete by (must match the API allowlist).
+const DELETE_COLUMNS: { key: string; label: string }[] = [
+  { key: "salesperson", label: "Salesperson (พนักงานขาย)" },
+  { key: "customer_name", label: "Customer Name (ลูกค้า)" },
+  { key: "company_name", label: "Company Name (บริษัท)" },
+  { key: "category", label: "Category (หมวดหมู่)" },
+  { key: "product_code", label: "Product Code (รหัสสินค้า)" },
+  { key: "product_name", label: "Product Name (ชื่อสินค้า)" },
+  { key: "province", label: "Province (จังหวัด)" },
+  { key: "invoice_no", label: "Invoice No. (เลขที่บิล)" },
+];
+
 export default function UploadPage() {
   const router = useRouter();
   const { profile } = useDashboard();
@@ -92,6 +104,8 @@ export default function UploadPage() {
   const [deleting, setDeleting] = React.useState(false);
   const [deleteFrom, setDeleteFrom] = React.useState("");
   const [deleteTo, setDeleteTo] = React.useState("");
+  const [deleteColumn, setDeleteColumn] = React.useState("");
+  const [deleteValue, setDeleteValue] = React.useState("");
 
   const salesIndex = roles.findIndex((r) => r === "sales");
   const salesSheet = salesIndex >= 0 ? sheets[salesIndex] : null;
@@ -236,9 +250,13 @@ export default function UploadPage() {
   async function handleDelete() {
     setDeleting(true);
     try {
-      const body = deleteFrom || deleteTo
-        ? { dateFrom: deleteFrom || undefined, dateTo: deleteTo || undefined }
-        : {};
+      const body: Record<string, string> = {};
+      if (deleteFrom) body.dateFrom = deleteFrom;
+      if (deleteTo) body.dateTo = deleteTo;
+      if (deleteColumn && deleteValue) {
+        body.column = deleteColumn;
+        body.value = deleteValue;
+      }
       const res = await fetch("/api/sales/delete", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
@@ -250,6 +268,8 @@ export default function UploadPage() {
       setDeleteOpen(false);
       setDeleteFrom("");
       setDeleteTo("");
+      setDeleteColumn("");
+      setDeleteValue("");
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Delete failed");
@@ -583,10 +603,49 @@ export default function UploadPage() {
                     />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>ลบตามคอลัมน์ (optional)</Label>
+                    <Select
+                      value={deleteColumn || NONE}
+                      onValueChange={(v) => setDeleteColumn(v === NONE ? "" : v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="— ไม่เลือก —" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NONE}>— ไม่เลือก —</SelectItem>
+                        {DELETE_COLUMNS.map((c) => (
+                          <SelectItem key={c.key} value={c.key}>
+                            {c.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>ค่าที่ต้องการลบ</Label>
+                    <Input
+                      placeholder={deleteColumn ? "เช่น B3, S066" : "เลือกคอลัมน์ก่อน"}
+                      value={deleteValue}
+                      disabled={!deleteColumn}
+                      onChange={(e) => setDeleteValue(e.target.value)}
+                    />
+                  </div>
+                </div>
                 <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                  {deleteFrom || deleteTo
-                    ? `จะลบข้อมูลระหว่าง ${deleteFrom || "ต้นปี"} — ${deleteTo || "ปัจจุบัน"}`
-                    : "⚠️ จะลบข้อมูลทั้งหมดในตาราง sales"}
+                  {(() => {
+                    const parts: string[] = [];
+                    if (deleteFrom || deleteTo)
+                      parts.push(`วันที่ ${deleteFrom || "ต้นปี"} — ${deleteTo || "ปัจจุบัน"}`);
+                    if (deleteColumn && deleteValue) {
+                      const label = DELETE_COLUMNS.find((c) => c.key === deleteColumn)?.label ?? deleteColumn;
+                      parts.push(`${label} = "${deleteValue}"`);
+                    }
+                    return parts.length
+                      ? `จะลบข้อมูลที่ตรงเงื่อนไข: ${parts.join(" และ ")}`
+                      : "⚠️ จะลบข้อมูลทั้งหมดในตาราง sales";
+                  })()}
                 </p>
               </div>
               <DialogFooter>
