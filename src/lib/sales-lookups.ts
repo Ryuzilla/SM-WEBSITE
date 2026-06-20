@@ -21,7 +21,7 @@ export interface SheetData {
   rows: Record<string, unknown>[];
 }
 
-export type SheetRole = "sales" | "products" | "customers" | "brands" | "ignore";
+export type SheetRole = "sales" | "products" | "customers" | "brands" | "salespersons" | "ignore";
 
 /** Read every worksheet of a workbook file into SheetData[]. */
 export async function parseAllSheets(file: File): Promise<SheetData[]> {
@@ -50,6 +50,8 @@ export function classifySheet(sheet: SheetData): SheetRole {
     return "customers";
   if (includesAny(h, ["stkcode2"]) && includesAny(h, ["สินค้าหลัก", "companies", "brandname", "suppliername"]))
     return "brands";
+  if (includesAny(h, ["รหัส"]) && includesAny(h, ["ชื่อพนักงาน", "salesname", "salespersonname"]))
+    return "salespersons";
   // Sales: a date-like + an amount-like column (+ usually a qty).
   if (
     includesAny(h, ["mildate", "date", "วันที่"]) &&
@@ -132,6 +134,20 @@ export function buildBrandMap(sheet: SheetData): Map<string, string> {
   return map;
 }
 
+/** รหัส → ชื่อพนักงาน (salesperson code → name) from a SALES_ID master sheet. */
+export function buildSalespersonMap(sheet: SheetData): Map<string, string> {
+  const codeCol = findCol(sheet.headers, ["รหัส", "salescode", "salespersoncode", "debsalesp"]);
+  const nameCol = findCol(sheet.headers, ["ชื่อพนักงาน", "salesname", "salespersonname"]);
+  const map = new Map<string, string>();
+  if (!codeCol || !nameCol) return map;
+  for (const r of sheet.rows) {
+    const code = String(r[codeCol] ?? "").trim();
+    if (!code) continue;
+    map.set(code, String(r[nameCol] ?? "").trim());
+  }
+  return map;
+}
+
 // 77 Thai provinces (without the "จังหวัด"/"จ." prefix).
 export const THAI_PROVINCES = [
   "กรุงเทพมหานคร", "กระบี่", "กาญจนบุรี", "กาฬสินธุ์", "กำแพงเพชร", "ขอนแก่น",
@@ -172,6 +188,7 @@ export interface Lookups {
   products?: Map<string, ProductInfo>;
   customers?: Map<string, CustomerInfo>;
   brands?: Map<string, string>;
+  salespersons?: Map<string, string>;
 }
 
 /**
@@ -211,6 +228,13 @@ export function enrichRows(
     }
     delete out["__brandCode"];
 
+    // Resolve salesperson code (DEBsalesP) → name from SALES_ID master.
+    const salesCode = String(row["Salesperson"] ?? "").trim();
+    if (salesCode && lookups.salespersons) {
+      const salesName = lookups.salespersons.get(salesCode);
+      if (salesName) out["Salesperson"] = salesName;
+    }
+
     return out;
   });
 }
@@ -225,6 +249,7 @@ export function joinStats(
   let customersMatched = 0;
   let productsMatched = 0;
   let brandsMatched = 0;
+  let salespersonsMatched = 0;
   for (const r of rows) {
     if (lookups.customers?.has(String(r[customerCodeField] ?? "").trim()))
       customersMatched++;
@@ -232,11 +257,14 @@ export function joinStats(
       productsMatched++;
     if (lookups.brands?.has(String(r["__brandCode"] ?? "").trim()))
       brandsMatched++;
+    if (lookups.salespersons?.has(String(r["Salesperson"] ?? "").trim()))
+      salespersonsMatched++;
   }
   return {
     total: rows.length,
     customersMatched,
     productsMatched,
     brandsMatched,
+    salespersonsMatched,
   };
 }
