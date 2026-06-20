@@ -9,8 +9,9 @@
 --                 linked salesperson name
 -- ════════════════════════════════════════════════════════════════
 
--- Helper: current user's role.
-create or replace function public.current_role()
+-- Helper: current user's role. (Named app_user_role to avoid the reserved
+-- keyword CURRENT_ROLE.)
+create or replace function public.app_user_role()
 returns user_role
 language sql stable security definer set search_path = public
 as $$
@@ -40,7 +41,7 @@ alter table public.targets      enable row level security;
 -- ─────────────────────────── Profiles ──────────────────────────
 drop policy if exists "profiles_self_read" on public.profiles;
 create policy "profiles_self_read" on public.profiles
-  for select using (id = auth.uid() or public.current_role() in ('admin','manager'));
+  for select using (id = auth.uid() or public.app_user_role() in ('admin','manager'));
 
 drop policy if exists "profiles_self_update" on public.profiles;
 create policy "profiles_self_update" on public.profiles
@@ -48,21 +49,21 @@ create policy "profiles_self_update" on public.profiles
 
 drop policy if exists "profiles_admin_all" on public.profiles;
 create policy "profiles_admin_all" on public.profiles
-  for all using (public.current_role() = 'admin')
-  with check (public.current_role() = 'admin');
+  for all using (public.app_user_role() = 'admin')
+  with check (public.app_user_role() = 'admin');
 
 -- ─────────────────────────── Sales ─────────────────────────────
 drop policy if exists "sales_read" on public.sales;
 create policy "sales_read" on public.sales
   for select using (
-    public.current_role() in ('admin','manager')
+    public.app_user_role() in ('admin','manager')
     or salesperson = public.current_salesperson_name()
   );
 
 drop policy if exists "sales_admin_write" on public.sales;
 create policy "sales_admin_write" on public.sales
-  for all using (public.current_role() = 'admin')
-  with check (public.current_role() = 'admin');
+  for all using (public.app_user_role() = 'admin')
+  with check (public.app_user_role() = 'admin');
 
 -- ─────────── Reference tables: readable by all authed users ─────
 -- Writable only by admins.
@@ -78,7 +79,7 @@ begin
 
     execute format('drop policy if exists "%s_admin_write" on public.%I;', t, t);
     execute format(
-      'create policy "%s_admin_write" on public.%I for all using (public.current_role() = ''admin'') with check (public.current_role() = ''admin'');',
+      'create policy "%s_admin_write" on public.%I for all using (public.app_user_role() = ''admin'') with check (public.app_user_role() = ''admin'');',
       t, t);
   end loop;
 end $$;
