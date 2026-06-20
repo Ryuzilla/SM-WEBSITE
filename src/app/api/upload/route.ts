@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { getCurrentProfile, canManageData } from "@/lib/auth";
 import { useSampleData } from "@/lib/env";
 import { mapRowsToRecords } from "@/lib/excel-import";
+import { invalidateSalesCache } from "@/lib/data";
 
 export const runtime = "nodejs";
 
@@ -67,5 +68,6 @@ export async function POST(request: Request) {
     imported += chunk.length;
   }
 
+  invalidateSalesCache();
   return NextResponse.json({ imported, demo: false });
 }

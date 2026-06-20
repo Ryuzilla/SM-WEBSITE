@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { getCurrentProfile, canManageData } from "@/lib/auth";
 import { useSampleData } from "@/lib/env";
+import { invalidateSalesCache } from "@/lib/data";
 
 export const runtime = "nodejs";
 
@@ -51,6 +52,7 @@ export async function DELETE(request: Request) {
     const { error } = await supabase.from("sales").delete().in("id", ids);
     if (error)
       return NextResponse.json({ error: error.message }, { status: 500 });
+    invalidateSalesCache();
     return NextResponse.json({ deleted: true, count: ids.length });
   }
 
@@ -80,5 +82,6 @@ export async function DELETE(request: Request) {
   if (error)
     return NextResponse.json({ error: error.message }, { status: 500 });
 
+  invalidateSalesCache();
   return NextResponse.json({ deleted: true });
 }
