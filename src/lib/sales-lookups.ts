@@ -48,7 +48,7 @@ export function classifySheet(sheet: SheetData): SheetRole {
     return "products";
   if (includesAny(h, ["รหัสลูกค้า"]) && includesAny(h, ["ชื่อบริษัท", "ชื่อลูกค้า"]))
     return "customers";
-  if (includesAny(h, ["stkcode2"]) && includesAny(h, ["สินค้าหลัก", "brandname", "suppliername"]))
+  if (includesAny(h, ["stkcode2"]) && includesAny(h, ["สินค้าหลัก", "companies", "brandname", "suppliername"]))
     return "brands";
   // Sales: a date-like + an amount-like column (+ usually a qty).
   if (
@@ -121,7 +121,7 @@ export function buildCustomerMap(sheet: SheetData): Map<string, CustomerInfo> {
 /** STKcode2 → สินค้าหลัก (brand/supplier name) from a STKCODE master sheet. */
 export function buildBrandMap(sheet: SheetData): Map<string, string> {
   const codeCol = findCol(sheet.headers, ["stkcode2", "suppliercode", "brandcode"]);
-  const nameCol = findCol(sheet.headers, ["สินค้าหลัก", "brandname", "suppliername"]);
+  const nameCol = findCol(sheet.headers, ["สินค้าหลัก", "companies", "brandname", "suppliername"]);
   const map = new Map<string, string>();
   if (!codeCol || !nameCol) return map;
   for (const r of sheet.rows) {
