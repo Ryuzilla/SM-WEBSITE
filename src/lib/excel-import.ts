@@ -73,20 +73,18 @@ export function validateMappedRows(
 function normalizeDate(value: unknown): string {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   const s = String(value).trim();
-  // DD/MM/YYYY or MM/DD/YYYY — 4-digit year (try before generic new Date() which
-  // might misparse short years or locale-formatted strings).
+  // M/D/YYYY — 4-digit year (US format used by this ERP)
   const m4 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if (m4) {
-    const [, a, b, y] = m4;
-    // Assume D/M/YYYY (Thai/EU convention). If day > 12 it's unambiguous anyway.
-    return `${y}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
+    const [, month, day, year] = m4;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
   }
-  // D/M/YY or M/D/YY — 2-digit year (common in Thai ERP short-date format)
+  // M/D/YY — 2-digit year (Thai ERP short-date format, e.g. "1/13/26")
   const m2 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2})$/);
   if (m2) {
-    const [, a, b, y] = m2;
+    const [, month, day, y] = m2;
     const year = parseInt(y) < 70 ? `20${y}` : `19${y}`;
-    return `${year}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
   }
   const d = new Date(s);
   if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
