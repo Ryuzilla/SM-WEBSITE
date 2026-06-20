@@ -82,9 +82,11 @@ create table if not exists public.sales (
   product_code   text not null,
   product_name   text not null,
   category       text,
-  quantity       numeric(14,2) not null check (quantity > 0),
+  -- quantity / sales_amount may be zero or negative: returns & credit notes
+  -- are legitimate rows that reduce revenue.
+  quantity       numeric(14,2) not null default 0,
   unit_price     numeric(14,2) not null default 0,
-  sales_amount   numeric(16,2) not null check (sales_amount >= 0),
+  sales_amount   numeric(16,2) not null default 0,
   province       text,
   created_by     uuid references auth.users(id) on delete set null,
   created_at     timestamptz not null default now()

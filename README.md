@@ -4,6 +4,12 @@ A premium, production-ready **Sales Analytics Dashboard** for business executive
 
 > 💡 **Runs out of the box.** With no environment configured, the app boots in **Demo Mode** using a bundled, realistic ~18-month synthetic dataset — so you can explore every screen immediately. Add Supabase credentials to switch to live data + authentication.
 
+## ▶️ One-click deploy (live preview in ~2 min)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FRyuzilla%2FSM---WEBSITE&project-name=sm-sales-analytics&repository-name=sm-sales-analytics&env=NEXT_PUBLIC_USE_SAMPLE_DATA&envDescription=Set%20to%20true%20to%20run%20in%20demo%20mode%20without%20a%20database)
+
+Clicking the button imports this repo into Vercel and gives you a public URL. **No environment variables are required for the demo** — just deploy (optionally set `NEXT_PUBLIC_USE_SAMPLE_DATA=true`). To use live data, add the Supabase variables afterwards (see [Supabase Setup](#️-supabase-setup-live-mode)).
+
 ---
 
 ## ✨ Features
