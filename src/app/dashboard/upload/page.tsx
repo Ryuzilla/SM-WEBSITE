@@ -43,6 +43,7 @@ import {
   type ColumnMapping,
 } from "@/lib/column-mapping";
 import {
+  buildBrandMap,
   buildCustomerMap,
   buildProductMap,
   classifySheet,
@@ -59,6 +60,7 @@ const ROLE_LABELS: Record<SheetRole, string> = {
   sales: "Sales transactions",
   products: "Product list (master)",
   customers: "Customer list (master)",
+  brands: "Brand/Supplier list (STKCODE)",
   ignore: "Ignore",
 };
 
@@ -78,17 +80,20 @@ export default function UploadPage() {
   const salesIndex = roles.findIndex((r) => r === "sales");
   const salesSheet = salesIndex >= 0 ? sheets[salesIndex] : null;
 
-  // Build lookup maps by merging all sheets assigned the products/customers role.
-  const { productMap, customerMap } = React.useMemo(() => {
+  // Build lookup maps by merging all sheets assigned the products/customers/brands role.
+  const { productMap, customerMap, brandMap } = React.useMemo(() => {
     const products = new Map();
     const customers = new Map();
+    const brands = new Map();
     sheets.forEach((s, i) => {
       if (roles[i] === "products")
         buildProductMap(s).forEach((v, k) => products.set(k, v));
       if (roles[i] === "customers")
         buildCustomerMap(s).forEach((v, k) => customers.set(k, v));
+      if (roles[i] === "brands")
+        buildBrandMap(s).forEach((v, k) => brands.set(k, v));
     });
-    return { productMap: products, customerMap: customers };
+    return { productMap: products, customerMap: customers, brandMap: brands };
   }, [sheets, roles]);
 
   // Map + enrich + validate the sales sheet whenever inputs change.
@@ -96,10 +101,11 @@ export default function UploadPage() {
     if (!salesSheet)
       return { canonicalRows: [], validation: null, stats: null };
     const mapped = applyMapping(salesSheet.rows, mapping);
-    const s = joinStats(mapped, { products: productMap, customers: customerMap });
+    const s = joinStats(mapped, { products: productMap, customers: customerMap, brands: brandMap });
     const enriched = enrichRows(mapped, {
       products: productMap,
       customers: customerMap,
+      brands: brandMap,
     });
     const mappingErrors = validateMapping(mapping);
     return {
@@ -331,28 +337,41 @@ export default function UploadPage() {
       )}
 
       {/* Lookup / join status */}
-      {salesSheet && (productMap.size > 0 || customerMap.size > 0) && stats && (
+      {salesSheet && (productMap.size > 0 || customerMap.size > 0 || brandMap.size > 0) && stats && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Link2 className="h-5 w-5 text-primary" /> Lookup Join
             </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <JoinStat
-              label="Products resolved"
-              detail={`${productMap.size} in master`}
-              matched={stats.productsMatched}
-              total={stats.total}
-              pct={matchPct(stats.productsMatched)}
-            />
-            <JoinStat
-              label="Customers resolved"
-              detail={`${customerMap.size} in master`}
-              matched={stats.customersMatched}
-              total={stats.total}
-              pct={matchPct(stats.customersMatched)}
-            />
+          <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {productMap.size > 0 && (
+              <JoinStat
+                label="Products resolved"
+                detail={`${productMap.size} in master`}
+                matched={stats.productsMatched}
+                total={stats.total}
+                pct={matchPct(stats.productsMatched)}
+              />
+            )}
+            {customerMap.size > 0 && (
+              <JoinStat
+                label="Customers resolved"
+                detail={`${customerMap.size} in master`}
+                matched={stats.customersMatched}
+                total={stats.total}
+                pct={matchPct(stats.customersMatched)}
+              />
+            )}
+            {brandMap.size > 0 && (
+              <JoinStat
+                label="Brands resolved"
+                detail={`${brandMap.size} in STKCODE`}
+                matched={stats.brandsMatched}
+                total={stats.total}
+                pct={matchPct(stats.brandsMatched)}
+              />
+            )}
           </CardContent>
         </Card>
       )}
