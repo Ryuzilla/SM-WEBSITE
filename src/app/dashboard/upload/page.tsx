@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { useDashboard } from "@/components/providers/dashboard-provider";
 import { PageHeader } from "@/components/dashboard/page-header";
+import { BrowseDeleteTable } from "@/components/dashboard/browse-delete-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -661,6 +662,9 @@ export default function UploadPage() {
           </Dialog>
         </CardContent>
       </Card>
+
+      {/* Browse & delete individual rows */}
+      <BrowseDeleteTable />
 
       {/* Mapped + enriched preview */}
       {salesSheet && previewRows.length > 0 && (
