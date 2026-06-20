@@ -202,13 +202,13 @@ export function enrichRows(
         out["Category"] = prod.supplier;
     }
 
-    // Resolve brand code (STKcode2, carried as __brandCode) → brand name.
-    // Falls back to setting Category only when not already populated.
+    // Resolve brand code (STKcode2, carried as __brandCode) → Companies name.
+    // Writes to Company_Name when not already populated.
     const brandCode = String(row["__brandCode"] ?? "").trim();
     if (brandCode && lookups.brands) {
       const brandName = lookups.brands.get(brandCode);
-      if (brandName && !String(out["Category"] ?? "").trim())
-        out["Category"] = brandName;
+      if (brandName && !String(out["Company_Name"] ?? "").trim())
+        out["Company_Name"] = brandName;
     }
     delete out["__brandCode"];
 
