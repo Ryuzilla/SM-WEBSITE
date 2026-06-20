@@ -72,6 +72,7 @@ export default function UploadPage() {
   const [mapping, setMapping] = React.useState<ColumnMapping>({});
   const [parsing, setParsing] = React.useState(false);
   const [importing, setImporting] = React.useState(false);
+  const [importProgress, setImportProgress] = React.useState<{ done: number; total: number } | null>(null);
   const [dragOver, setDragOver] = React.useState(false);
 
   const salesIndex = roles.findIndex((r) => r === "sales");
@@ -176,18 +177,29 @@ export default function UploadPage() {
   async function handleImport() {
     if (!validation?.ok) return;
     setImporting(true);
+    // Send in 500-row chunks to stay under Vercel's 4.5 MB request body limit.
+    const CHUNK = 500;
+    let totalImported = 0;
+    let demo = false;
     try {
-      const res = await fetch("/api/upload", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows: canonicalRows }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Import failed");
+      setImportProgress({ done: 0, total: canonicalRows.length });
+      for (let i = 0; i < canonicalRows.length; i += CHUNK) {
+        const chunk = canonicalRows.slice(i, i + CHUNK);
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ rows: chunk }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Import failed");
+        totalImported += data.imported ?? 0;
+        demo = demo || !!data.demo;
+        setImportProgress({ done: Math.min(i + CHUNK, canonicalRows.length), total: canonicalRows.length });
+      }
       toast.success(
-        data.demo
-          ? `Validated ${data.imported} rows (demo mode — not persisted)`
-          : `Imported ${data.imported} rows successfully`,
+        demo
+          ? `Validated ${totalImported} rows (demo mode — not persisted)`
+          : `Imported ${totalImported} rows successfully`,
       );
       reset();
       router.refresh();
@@ -195,6 +207,7 @@ export default function UploadPage() {
       toast.error(err instanceof Error ? err.message : "Import failed");
     } finally {
       setImporting(false);
+      setImportProgress(null);
     }
   }
 
@@ -455,7 +468,9 @@ export default function UploadPage() {
             <div className="flex items-center gap-3">
               <Button onClick={handleImport} disabled={!validation.ok || importing}>
                 {importing && <Loader2 className="h-4 w-4 animate-spin" />}
-                Import {validation.validRows} rows
+                {importProgress
+                  ? `Importing… ${importProgress.done} / ${importProgress.total}`
+                  : `Import ${validation.validRows} rows`}
               </Button>
               <Button variant="outline" onClick={reset} disabled={importing}>
                 Reset
