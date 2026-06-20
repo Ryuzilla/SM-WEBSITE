@@ -10,6 +10,7 @@ import {
   Link2,
   Loader2,
   ShieldAlert,
+  Trash2,
   Upload,
   XCircle,
 } from "lucide-react";
@@ -18,6 +19,17 @@ import { useDashboard } from "@/components/providers/dashboard-provider";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -76,6 +88,10 @@ export default function UploadPage() {
   const [importing, setImporting] = React.useState(false);
   const [importProgress, setImportProgress] = React.useState<{ done: number; total: number } | null>(null);
   const [dragOver, setDragOver] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
+  const [deleteFrom, setDeleteFrom] = React.useState("");
+  const [deleteTo, setDeleteTo] = React.useState("");
 
   const salesIndex = roles.findIndex((r) => r === "sales");
   const salesSheet = salesIndex >= 0 ? sheets[salesIndex] : null;
@@ -214,6 +230,31 @@ export default function UploadPage() {
     } finally {
       setImporting(false);
       setImportProgress(null);
+    }
+  }
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const body = deleteFrom || deleteTo
+        ? { dateFrom: deleteFrom || undefined, dateTo: deleteTo || undefined }
+        : {};
+      const res = await fetch("/api/sales/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Delete failed");
+      toast.success(data.demo ? "Demo mode — no data deleted" : "Data deleted successfully");
+      setDeleteOpen(false);
+      setDeleteFrom("");
+      setDeleteTo("");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -498,6 +539,69 @@ export default function UploadPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Danger Zone — delete sales data */}
+      <Card className="border-destructive/40">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <Trash2 className="h-5 w-5" /> Danger Zone
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            ลบข้อมูล sales ออกจากฐานข้อมูล ไม่สามารถกู้คืนได้
+          </p>
+        </CardHeader>
+        <CardContent>
+          <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+            <DialogTrigger asChild>
+              <Button variant="destructive" className="gap-2">
+                <Trash2 className="h-4 w-4" /> ลบข้อมูล Sales
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>ยืนยันการลบข้อมูล</DialogTitle>
+                <DialogDescription>
+                  ระบุช่วงวันที่ที่ต้องการลบ หรือปล่อยว่างไว้เพื่อ<strong>ลบทั้งหมด</strong>
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label>วันที่เริ่ม</Label>
+                    <Input
+                      type="date"
+                      value={deleteFrom}
+                      onChange={(e) => setDeleteFrom(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label>วันที่สิ้นสุด</Label>
+                    <Input
+                      type="date"
+                      value={deleteTo}
+                      onChange={(e) => setDeleteTo(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {deleteFrom || deleteTo
+                    ? `จะลบข้อมูลระหว่าง ${deleteFrom || "ต้นปี"} — ${deleteTo || "ปัจจุบัน"}`
+                    : "⚠️ จะลบข้อมูลทั้งหมดในตาราง sales"}
+                </p>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting}>
+                  ยกเลิก
+                </Button>
+                <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+                  {deleting && <Loader2 className="h-4 w-4 animate-spin" />}
+                  ยืนยันลบ
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </CardContent>
+      </Card>
 
       {/* Mapped + enriched preview */}
       {salesSheet && previewRows.length > 0 && (
