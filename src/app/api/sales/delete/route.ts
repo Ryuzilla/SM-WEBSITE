@@ -20,7 +20,8 @@ const FILTERABLE_COLUMNS = new Set([
 
 /**
  * DELETE /api/sales/delete
- * Body (optional): { dateFrom?, dateTo?, column?, value? }
+ * Body (optional): { ids?, dateFrom?, dateTo?, column?, value? }
+ * - ids[]              → delete exactly those rows (from the browse table)
  * - No filters         → delete ALL rows
  * - dateFrom / dateTo  → restrict to an inclusive date range
  * - column + value     → restrict to rows where <column> = <value>
@@ -37,15 +38,25 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ deleted: 0, demo: true });
 
   const body = await request.json().catch(() => ({}));
+  const ids: string[] | null = Array.isArray(body.ids) ? body.ids : null;
   const dateFrom: string | null = body.dateFrom ?? null;
   const dateTo: string | null = body.dateTo ?? null;
   const column: string | null = body.column ?? null;
   const value: string | null = body.value ?? null;
 
+  const supabase = createAdminClient();
+
+  // Delete specific rows selected in the browse table.
+  if (ids && ids.length > 0) {
+    const { error } = await supabase.from("sales").delete().in("id", ids);
+    if (error)
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ deleted: true, count: ids.length });
+  }
+
   if (column && !FILTERABLE_COLUMNS.has(column))
     return NextResponse.json({ error: `Invalid column: ${column}` }, { status: 400 });
 
-  const supabase = createAdminClient();
   let q = supabase.from("sales").delete();
   let hasFilter = false;
 
