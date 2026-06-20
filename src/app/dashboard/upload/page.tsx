@@ -587,6 +587,73 @@ export default function UploadPage() {
         </Card>
       )}
 
+      {/* Mapped + enriched preview */}
+      {salesSheet && previewRows.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              Mapped Preview{" "}
+              <span className="text-sm font-normal text-muted-foreground">
+                (rows {previewStart + 1}–{previewStart + previewRows.length} of{" "}
+                {canonicalRows.length.toLocaleString()}, as imported)
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="max-h-[600px] overflow-auto rounded-lg border scrollbar-thin">
+              <Table>
+                <TableHeader className="sticky top-0 bg-card">
+                  <TableRow>
+                    {TARGET_FIELDS.map((f) => (
+                      <TableHead key={f.key}>{f.label}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {previewRows.map((row, i) => (
+                    <TableRow key={previewStart + i}>
+                      {TARGET_FIELDS.map((f) => (
+                        <TableCell key={f.key} className="whitespace-nowrap">
+                          {String(row[f.key] ?? "") || (
+                            <span className="text-muted-foreground/50">—</span>
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                หน้า {safePreviewPage + 1} / {previewTotalPages.toLocaleString()}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPreviewPage((p) => Math.max(0, p - 1))}
+                  disabled={safePreviewPage <= 0}
+                >
+                  ก่อนหน้า
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPreviewPage((p) => Math.min(previewTotalPages - 1, p + 1))}
+                  disabled={safePreviewPage + 1 >= previewTotalPages}
+                >
+                  ถัดไป
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Browse & delete individual rows */}
+      <BrowseDeleteTable />
+
       {/* Danger Zone — delete sales data */}
       <Card className="border-destructive/40">
         <CardHeader>
@@ -705,73 +772,6 @@ export default function UploadPage() {
           </Dialog>
         </CardContent>
       </Card>
-
-      {/* Browse & delete individual rows */}
-      <BrowseDeleteTable />
-
-      {/* Mapped + enriched preview */}
-      {salesSheet && previewRows.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              Mapped Preview{" "}
-              <span className="text-sm font-normal text-muted-foreground">
-                (rows {previewStart + 1}–{previewStart + previewRows.length} of{" "}
-                {canonicalRows.length.toLocaleString()}, as imported)
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="max-h-[600px] overflow-auto rounded-lg border scrollbar-thin">
-              <Table>
-                <TableHeader className="sticky top-0 bg-card">
-                  <TableRow>
-                    {TARGET_FIELDS.map((f) => (
-                      <TableHead key={f.key}>{f.label}</TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {previewRows.map((row, i) => (
-                    <TableRow key={previewStart + i}>
-                      {TARGET_FIELDS.map((f) => (
-                        <TableCell key={f.key} className="whitespace-nowrap">
-                          {String(row[f.key] ?? "") || (
-                            <span className="text-muted-foreground/50">—</span>
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">
-                หน้า {safePreviewPage + 1} / {previewTotalPages.toLocaleString()}
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPreviewPage((p) => Math.max(0, p - 1))}
-                  disabled={safePreviewPage <= 0}
-                >
-                  ก่อนหน้า
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPreviewPage((p) => Math.min(previewTotalPages - 1, p + 1))}
-                  disabled={safePreviewPage + 1 >= previewTotalPages}
-                >
-                  ถัดไป
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
