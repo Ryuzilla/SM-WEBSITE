@@ -110,6 +110,7 @@ export default function UploadPage() {
   const [deleteColumn, setDeleteColumn] = React.useState("");
   const [deleteValue, setDeleteValue] = React.useState("");
   const [confirmDeleteAll, setConfirmDeleteAll] = React.useState(false);
+  const [previewPage, setPreviewPage] = React.useState(0);
 
   const salesIndex = roles.findIndex((r) => r === "sales");
   const salesSheet = salesIndex >= 0 ? sheets[salesIndex] : null;
@@ -299,7 +300,11 @@ export default function UploadPage() {
   }
 
   const headers = salesSheet?.headers ?? [];
-  const previewRows = canonicalRows.slice(0, 8);
+  const PREVIEW_PAGE_SIZE = 100;
+  const previewTotalPages = Math.max(1, Math.ceil(canonicalRows.length / PREVIEW_PAGE_SIZE));
+  const safePreviewPage = Math.min(previewPage, previewTotalPages - 1);
+  const previewStart = safePreviewPage * PREVIEW_PAGE_SIZE;
+  const previewRows = canonicalRows.slice(previewStart, previewStart + PREVIEW_PAGE_SIZE);
   const mappedCount = TARGET_FIELDS.filter((f) => mapping[f.key]).length;
   const matchPct = (n: number) =>
     stats && stats.total ? Math.round((n / stats.total) * 100) : 0;
@@ -711,34 +716,59 @@ export default function UploadPage() {
             <CardTitle>
               Mapped Preview{" "}
               <span className="text-sm font-normal text-muted-foreground">
-                (first {previewRows.length} of {canonicalRows.length} rows, as
-                imported)
+                (rows {previewStart + 1}–{previewStart + previewRows.length} of{" "}
+                {canonicalRows.length.toLocaleString()}, as imported)
               </span>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {TARGET_FIELDS.map((f) => (
-                    <TableHead key={f.key}>{f.label}</TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {previewRows.map((row, i) => (
-                  <TableRow key={i}>
+          <CardContent className="space-y-4">
+            <div className="max-h-[600px] overflow-auto rounded-lg border scrollbar-thin">
+              <Table>
+                <TableHeader className="sticky top-0 bg-card">
+                  <TableRow>
                     {TARGET_FIELDS.map((f) => (
-                      <TableCell key={f.key} className="whitespace-nowrap">
-                        {String(row[f.key] ?? "") || (
-                          <span className="text-muted-foreground/50">—</span>
-                        )}
-                      </TableCell>
+                      <TableHead key={f.key}>{f.label}</TableHead>
                     ))}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {previewRows.map((row, i) => (
+                    <TableRow key={previewStart + i}>
+                      {TARGET_FIELDS.map((f) => (
+                        <TableCell key={f.key} className="whitespace-nowrap">
+                          {String(row[f.key] ?? "") || (
+                            <span className="text-muted-foreground/50">—</span>
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                หน้า {safePreviewPage + 1} / {previewTotalPages.toLocaleString()}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPreviewPage((p) => Math.max(0, p - 1))}
+                  disabled={safePreviewPage <= 0}
+                >
+                  ก่อนหน้า
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPreviewPage((p) => Math.min(previewTotalPages - 1, p + 1))}
+                  disabled={safePreviewPage + 1 >= previewTotalPages}
+                >
+                  ถัดไป
+                </Button>
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}
