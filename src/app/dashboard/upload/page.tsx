@@ -59,6 +59,7 @@ import {
   buildBrandMap,
   buildCustomerMap,
   buildProductMap,
+  buildSalespersonMap,
   classifySheet,
   enrichRows,
   joinStats,
@@ -74,6 +75,7 @@ const ROLE_LABELS: Record<SheetRole, string> = {
   products: "Product list (master)",
   customers: "Customer list (master)",
   brands: "Brand/Supplier list (STKCODE)",
+  salespersons: "Salesperson list (SALES_ID)",
   ignore: "Ignore",
 };
 
@@ -112,11 +114,12 @@ export default function UploadPage() {
   const salesIndex = roles.findIndex((r) => r === "sales");
   const salesSheet = salesIndex >= 0 ? sheets[salesIndex] : null;
 
-  // Build lookup maps by merging all sheets assigned the products/customers/brands role.
-  const { productMap, customerMap, brandMap } = React.useMemo(() => {
+  // Build lookup maps by merging all sheets assigned a master role.
+  const { productMap, customerMap, brandMap, salespersonMap } = React.useMemo(() => {
     const products = new Map();
     const customers = new Map();
     const brands = new Map();
+    const salespersons = new Map();
     sheets.forEach((s, i) => {
       if (roles[i] === "products")
         buildProductMap(s).forEach((v, k) => products.set(k, v));
@@ -124,8 +127,10 @@ export default function UploadPage() {
         buildCustomerMap(s).forEach((v, k) => customers.set(k, v));
       if (roles[i] === "brands")
         buildBrandMap(s).forEach((v, k) => brands.set(k, v));
+      if (roles[i] === "salespersons")
+        buildSalespersonMap(s).forEach((v, k) => salespersons.set(k, v));
     });
-    return { productMap: products, customerMap: customers, brandMap: brands };
+    return { productMap: products, customerMap: customers, brandMap: brands, salespersonMap: salespersons };
   }, [sheets, roles]);
 
   // Map + enrich + validate the sales sheet whenever inputs change.
@@ -133,19 +138,16 @@ export default function UploadPage() {
     if (!salesSheet)
       return { canonicalRows: [], validation: null, stats: null };
     const mapped = applyMapping(salesSheet.rows, mapping);
-    const s = joinStats(mapped, { products: productMap, customers: customerMap, brands: brandMap });
-    const enriched = enrichRows(mapped, {
-      products: productMap,
-      customers: customerMap,
-      brands: brandMap,
-    });
+    const lookups = { products: productMap, customers: customerMap, brands: brandMap, salespersons: salespersonMap };
+    const s = joinStats(mapped, lookups);
+    const enriched = enrichRows(mapped, lookups);
     const mappingErrors = validateMapping(mapping);
     return {
       canonicalRows: enriched,
       validation: validateMappedRows(enriched, mappingErrors),
       stats: s,
     };
-  }, [salesSheet, mapping, productMap, customerMap]);
+  }, [salesSheet, mapping, productMap, customerMap, brandMap, salespersonMap]);
 
   if (profile.role !== "admin") {
     return (
@@ -409,7 +411,7 @@ export default function UploadPage() {
       )}
 
       {/* Lookup / join status */}
-      {salesSheet && (productMap.size > 0 || customerMap.size > 0 || brandMap.size > 0) && stats && (
+      {salesSheet && (productMap.size > 0 || customerMap.size > 0 || brandMap.size > 0 || salespersonMap.size > 0) && stats && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -442,6 +444,15 @@ export default function UploadPage() {
                 matched={stats.brandsMatched}
                 total={stats.total}
                 pct={matchPct(stats.brandsMatched)}
+              />
+            )}
+            {salespersonMap.size > 0 && (
+              <JoinStat
+                label="Salespersons resolved"
+                detail={`${salespersonMap.size} in SALES_ID`}
+                matched={stats.salespersonsMatched}
+                total={stats.total}
+                pct={matchPct(stats.salespersonsMatched)}
               />
             )}
           </CardContent>
