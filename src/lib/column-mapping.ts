@@ -152,6 +152,10 @@ export function autoDetectMapping(headers: string[]): ColumnMapping {
 /**
  * Project raw spreadsheet rows into rows keyed by canonical field names,
  * according to the (possibly user-edited) mapping. Unmapped fields become "".
+ *
+ * Also carries the supplier/brand code column (STKcode2) as "__brandCode"
+ * so enrichRows() can resolve it against the brand master sheet without
+ * requiring the user to explicitly map it.
  */
 export function applyMapping(
   rows: Record<string, unknown>[],
@@ -163,6 +167,10 @@ export function applyMapping(
       const src = mapping[field.key];
       out[field.key] = src ? row[src] : "";
     }
+    const brandCol = Object.keys(row).find(
+      (k) => k.toLowerCase().replace(/[^a-z0-9]/g, "") === "stkcode2",
+    );
+    if (brandCol) out["__brandCode"] = row[brandCol];
     return out;
   });
 }

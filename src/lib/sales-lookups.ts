@@ -21,7 +21,7 @@ export interface SheetData {
   rows: Record<string, unknown>[];
 }
 
-export type SheetRole = "sales" | "products" | "customers" | "ignore";
+export type SheetRole = "sales" | "products" | "customers" | "brands" | "ignore";
 
 /** Read every worksheet of a workbook file into SheetData[]. */
 export async function parseAllSheets(file: File): Promise<SheetData[]> {
@@ -48,6 +48,8 @@ export function classifySheet(sheet: SheetData): SheetRole {
     return "products";
   if (includesAny(h, ["รหัสลูกค้า"]) && includesAny(h, ["ชื่อบริษัท", "ชื่อลูกค้า"]))
     return "customers";
+  if (includesAny(h, ["stkcode2"]) && includesAny(h, ["สินค้าหลัก", "brandname", "suppliername"]))
+    return "brands";
   // Sales: a date-like + an amount-like column (+ usually a qty).
   if (
     includesAny(h, ["mildate", "date", "วันที่"]) &&
@@ -116,6 +118,20 @@ export function buildCustomerMap(sheet: SheetData): Map<string, CustomerInfo> {
   return map;
 }
 
+/** STKcode2 → สินค้าหลัก (brand/supplier name) from a STKCODE master sheet. */
+export function buildBrandMap(sheet: SheetData): Map<string, string> {
+  const codeCol = findCol(sheet.headers, ["stkcode2", "suppliercode", "brandcode"]);
+  const nameCol = findCol(sheet.headers, ["สินค้าหลัก", "brandname", "suppliername"]);
+  const map = new Map<string, string>();
+  if (!codeCol || !nameCol) return map;
+  for (const r of sheet.rows) {
+    const code = String(r[codeCol] ?? "").trim();
+    if (!code) continue;
+    map.set(code, String(r[nameCol] ?? "").trim());
+  }
+  return map;
+}
+
 // 77 Thai provinces (without the "จังหวัด"/"จ." prefix).
 export const THAI_PROVINCES = [
   "กรุงเทพมหานคร", "กระบี่", "กาญจนบุรี", "กาฬสินธุ์", "กำแพงเพชร", "ขอนแก่น",
@@ -155,6 +171,7 @@ export function extractProvince(address: string): string {
 export interface Lookups {
   products?: Map<string, ProductInfo>;
   customers?: Map<string, CustomerInfo>;
+  brands?: Map<string, string>;
 }
 
 /**
@@ -185,6 +202,16 @@ export function enrichRows(
         out["Category"] = prod.supplier;
     }
 
+    // Resolve brand code (STKcode2, carried as __brandCode) → brand name.
+    // Falls back to setting Category only when not already populated.
+    const brandCode = String(row["__brandCode"] ?? "").trim();
+    if (brandCode && lookups.brands) {
+      const brandName = lookups.brands.get(brandCode);
+      if (brandName && !String(out["Category"] ?? "").trim())
+        out["Category"] = brandName;
+    }
+    delete out["__brandCode"];
+
     return out;
   });
 }
@@ -198,15 +225,19 @@ export function joinStats(
 ) {
   let customersMatched = 0;
   let productsMatched = 0;
+  let brandsMatched = 0;
   for (const r of rows) {
     if (lookups.customers?.has(String(r[customerCodeField] ?? "").trim()))
       customersMatched++;
     if (lookups.products?.has(String(r[productCodeField] ?? "").trim()))
       productsMatched++;
+    if (lookups.brands?.has(String(r["__brandCode"] ?? "").trim()))
+      brandsMatched++;
   }
   return {
     total: rows.length,
     customersMatched,
     productsMatched,
+    brandsMatched,
   };
 }
