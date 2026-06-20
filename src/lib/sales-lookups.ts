@@ -203,12 +203,11 @@ export function enrichRows(
     }
 
     // Resolve brand code (STKcode2, carried as __brandCode) → Companies name.
-    // Writes to Company_Name when not already populated.
+    // Always overrides Category so the readable brand name replaces the raw code.
     const brandCode = String(row["__brandCode"] ?? "").trim();
     if (brandCode && lookups.brands) {
       const brandName = lookups.brands.get(brandCode);
-      if (brandName && !String(out["Company_Name"] ?? "").trim())
-        out["Company_Name"] = brandName;
+      if (brandName) out["Category"] = brandName;
     }
     delete out["__brandCode"];
 
