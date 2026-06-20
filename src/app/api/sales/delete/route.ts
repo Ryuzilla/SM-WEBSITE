@@ -65,6 +65,13 @@ export async function DELETE(request: Request) {
   if (column && value) { q = q.eq(column, value); hasFilter = true; }
 
   if (!hasFilter) {
+    // Safety net: a full wipe must be explicitly requested with deleteAll:true,
+    // so an empty/partial body can never accidentally clear the whole table.
+    if (body.deleteAll !== true)
+      return NextResponse.json(
+        { error: "ต้องระบุเงื่อนไข หรือส่ง deleteAll:true เพื่อยืนยันการลบทั้งหมด" },
+        { status: 400 },
+      );
     // Supabase requires at least one filter for DELETE; use a tautology.
     q = q.neq("id", "00000000-0000-0000-0000-000000000000");
   }
