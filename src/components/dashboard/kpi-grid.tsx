@@ -26,35 +26,35 @@ export function KpiGrid() {
         icon={Banknote}
         change={k.monthlyGrowthRate}
         hint="vs last month"
-        accent="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+        accent="bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-[0_8px_20px_-8px_rgb(59_130_246/0.8)]"
       />
       <KpiCard
         title="Total Orders"
         value={formatNumber(k.totalOrders)}
         icon={Receipt}
         hint="unique invoices"
-        accent="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+        accent="bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-[0_8px_20px_-8px_rgb(16_185_129/0.8)]"
       />
       <KpiCard
         title="Unique Customers"
         value={formatNumber(k.uniqueCustomers)}
         icon={Users}
         hint="active buyers"
-        accent="bg-violet-500/10 text-violet-600 dark:text-violet-400"
+        accent="bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-[0_8px_20px_-8px_rgb(139_92_246/0.8)]"
       />
       <KpiCard
         title="Unique Companies"
         value={formatNumber(k.uniqueCompanies)}
         icon={Building2}
         hint="accounts"
-        accent="bg-amber-500/10 text-amber-600 dark:text-amber-400"
+        accent="bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-[0_8px_20px_-8px_rgb(245_158_11/0.8)]"
       />
       <KpiCard
         title="Avg Order Value"
         value={formatCurrency(k.averageOrderValue)}
         icon={Wallet}
         hint="per invoice"
-        accent="bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
+        accent="bg-gradient-to-br from-cyan-500 to-sky-600 text-white shadow-[0_8px_20px_-8px_rgb(6_182_212/0.8)]"
       />
       <KpiCard
         title="Monthly Growth"
@@ -62,14 +62,14 @@ export function KpiGrid() {
         icon={TrendingUp}
         change={k.monthlyGrowthRate}
         hint="month over month"
-        accent="bg-rose-500/10 text-rose-600 dark:text-rose-400"
+        accent="bg-gradient-to-br from-rose-500 to-pink-600 text-white shadow-[0_8px_20px_-8px_rgb(244_63_94/0.8)]"
       />
       <KpiCard
         title="Daily Revenue"
         value={formatCurrency(k.dailyRevenue, { compact: true })}
         icon={CalendarRange}
         hint="avg per active day"
-        accent="bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+        accent="bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-[0_8px_20px_-8px_rgb(99_102_241/0.8)]"
       />
       <KpiCard
         title="Target Achievement"
@@ -77,7 +77,7 @@ export function KpiGrid() {
         icon={Target}
         hint={`of ${formatCurrency(k.revenueTarget, { compact: true })}`}
         progress={k.targetAchievement}
-        accent="bg-teal-500/10 text-teal-600 dark:text-teal-400"
+        accent="bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-[0_8px_20px_-8px_rgb(20_184_166/0.8)]"
       />
     </div>
   );

@@ -9,6 +9,8 @@ import { FilterBar } from "@/components/filters/filter-bar";
 import { ChartCard } from "@/components/dashboard/chart-card";
 import { RevenueTrendChart } from "@/components/charts/revenue-trend-chart";
 import { HorizontalBarChart } from "@/components/charts/horizontal-bar-chart";
+import { BubbleChart } from "@/components/charts/bubble-chart";
+import { HighlightCard } from "@/components/dashboard/highlight-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +22,13 @@ export default function OverviewPage() {
   const topProducts = analytics.products
     .slice(0, 7)
     .map((p) => ({ name: p.productName, revenue: p.revenue }));
+
+  const bubbleColors = ["bg-blue-500", "bg-violet-500", "bg-amber-400", "bg-emerald-500"];
+  const salesMix = analytics.companies.slice(0, 4).map((c, i) => ({
+    label: c.companyName,
+    value: c.revenue,
+    color: bubbleColors[i] ?? "bg-blue-500",
+  }));
 
   return (
     <div className="space-y-6">
@@ -56,6 +65,24 @@ export default function OverviewPage() {
         >
           <HorizontalBarChart data={topProducts} height={340} />
         </ChartCard>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        {salesMix.length > 0 && (
+          <ChartCard title="Sales Mix" description="Revenue share by top company">
+            <BubbleChart segments={salesMix} height={260} />
+          </ChartCard>
+        )}
+        <div className="lg:col-span-2">
+          <HighlightCard
+            eyebrow="Premium Insight"
+            value={formatCurrency(analytics.kpis.totalRevenue, { compact: true })}
+            title="ยอดขายรวมทั้งหมด"
+            description="ดูรายงานเชิงลึก แนวโน้ม และพยากรณ์รายเดือนแบบละเอียด พร้อมส่งออก PDF/Excel"
+            ctaLabel="สร้างรายงาน"
+            href="/dashboard/reports"
+          />
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
