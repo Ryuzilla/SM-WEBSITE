@@ -86,24 +86,6 @@ export default function OverviewPage() {
         </ChartCard>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {salesMix.length > 0 && (
-          <ChartCard title="Sales Mix" description="Revenue share by top company">
-            <BubbleChart segments={salesMix} height={260} />
-          </ChartCard>
-        )}
-        <div className="lg:col-span-2">
-          <HighlightCard
-            eyebrow="Premium Insight"
-            value={formatCurrency(analytics.kpis.totalRevenue, { compact: true })}
-            title="ยอดขายรวมทั้งหมด"
-            description="ดูรายงานเชิงลึก แนวโน้ม และพยากรณ์รายเดือนแบบละเอียด พร้อมส่งออก PDF/Excel"
-            ctaLabel="สร้างรายงาน"
-            href="/dashboard/reports"
-          />
-        </div>
-      </div>
-
       <div className="grid gap-4 md:grid-cols-3">
         <SummaryList
           title="Top Customers"
