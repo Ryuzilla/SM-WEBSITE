@@ -43,32 +43,32 @@
   }
 
   .dark {
-    --background: 222 47% 7%;
+    --background: 225 44% 5%;
     --foreground: 210 40% 98%;
 
-    --card: 222 44% 10%;
+    --card: 224 34% 8%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222 44% 10%;
+    --popover: 224 34% 9%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 217 91% 60%;
     --primary-foreground: 222 47% 11%;
 
-    --secondary: 217 33% 17%;
+    --secondary: 222 26% 14%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 222 26% 14%;
+    --muted-foreground: 215 20% 64%;
 
-    --accent: 217 33% 20%;
+    --accent: 222 26% 16%;
     --accent-foreground: 210 40% 98%;
 
     --destructive: 0 63% 48%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217 33% 20%;
-    --input: 217 33% 22%;
+    --border: 222 26% 15%;
+    --input: 222 26% 17%;
     --ring: 217 91% 60%;
 
     --chart-1: 217 91% 60%;
@@ -77,7 +77,7 @@
     --chart-4: 271 81% 66%;
     --chart-5: 339 82% 62%;
 
-    --png-bg: #0b1120;
+    --png-bg: #07090f;
   }
 }
 
@@ -88,6 +88,13 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  /* Ambient premium backdrop — subtle blue glow pools behind the dark UI. */
+  .dark body {
+    background-image:
+      radial-gradient(60rem 60rem at 110% -10%, hsl(217 91% 60% / 0.10), transparent 60%),
+      radial-gradient(50rem 50rem at -10% 110%, hsl(271 81% 66% / 0.08), transparent 55%);
+    background-attachment: fixed;
   }
 }
 
@@ -102,5 +109,26 @@
   }
   .gradient-text {
     @apply bg-gradient-to-r from-primary to-chart-4 bg-clip-text text-transparent;
+  }
+
+  /* Premium card surface: faint top-light gradient + soft depth shadow. */
+  .surface {
+    background-image: linear-gradient(
+      180deg,
+      hsl(var(--card)) 0%,
+      hsl(var(--card) / 0.6) 100%
+    );
+  }
+  .dark .surface {
+    box-shadow:
+      0 1px 0 0 hsl(0 0% 100% / 0.04) inset,
+      0 18px 40px -24px hsl(225 60% 2% / 0.9);
+  }
+  /* Glassy bar used by the top navigation. */
+  .glass {
+    @apply bg-background/70 backdrop-blur-xl;
+  }
+  .dark .glass {
+    background-color: hsl(225 44% 5% / 0.7);
   }
 }

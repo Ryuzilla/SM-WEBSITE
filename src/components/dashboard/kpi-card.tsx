@@ -31,21 +31,23 @@ export function KpiCard({
   const positive = (change ?? 0) >= 0;
 
   return (
-    <Card className="animate-fade-in overflow-hidden">
+    <Card className="group animate-fade-in overflow-hidden">
       <CardContent className="p-5">
         <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold tracking-tight">{value}</p>
-          </div>
           <div
             className={cn(
-              "flex h-10 w-10 items-center justify-center rounded-lg",
+              "flex h-11 w-11 items-center justify-center rounded-xl ring-1 ring-inset ring-foreground/5",
               accent,
             )}
           >
             <Icon className="h-5 w-5" />
           </div>
+          <ArrowUpRight className="h-4 w-4 text-muted-foreground/40 transition-colors group-hover:text-foreground" />
+        </div>
+
+        <div className="mt-4 space-y-1">
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className="text-2xl font-bold tracking-tight">{value}</p>
         </div>
 
         <div className="mt-3 flex items-center gap-2 text-xs">

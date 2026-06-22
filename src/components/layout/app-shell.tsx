@@ -1,26 +1,53 @@
 "use client";
 
 import * as React from "react";
-import { BarChart3, Menu, X } from "lucide-react";
+import Link from "next/link";
+import { Bell, Menu, Search, TrendingUp, X } from "lucide-react";
+import { toast } from "sonner";
 import { UserProfile } from "@/lib/types";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { SidebarNav } from "./sidebar-nav";
+import { TopNav } from "./top-nav";
 import { UserMenu } from "./user-menu";
 
 function Brand() {
   return (
-    <div className="flex items-center gap-2 px-6 py-5">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-        <BarChart3 className="h-5 w-5" />
+    <Link aria-label="SM Analytics home" href="/dashboard" className="flex items-center gap-2.5">
+      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-chart-4 text-primary-foreground shadow-[0_6px_18px_-6px_hsl(var(--primary)/0.7)]">
+        <TrendingUp className="h-5 w-5" />
       </div>
-      <div className="leading-tight">
-        <p className="text-sm font-semibold">SM Analytics</p>
-        <p className="text-xs text-muted-foreground">Executive Suite</p>
+      <div className="hidden leading-tight sm:block">
+        <p className="text-sm font-semibold tracking-tight">SM Analytics</p>
+        <p className="text-[11px] text-muted-foreground">Executive Suite</p>
       </div>
-    </div>
+    </Link>
+  );
+}
+
+function IconButton({
+  label,
+  onClick,
+  children,
+  dot,
+}: {
+  label: string;
+  onClick?: () => void;
+  children: React.ReactNode;
+  dot?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className="relative flex h-9 w-9 items-center justify-center rounded-full border bg-secondary/40 text-muted-foreground transition-colors hover:bg-foreground/5 hover:text-foreground"
+    >
+      {children}
+      {dot && (
+        <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary ring-2 ring-background" />
+      )}
+    </button>
   );
 }
 
@@ -36,69 +63,64 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-[16rem_1fr]">
-      {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen flex-col border-r bg-card lg:flex">
-        <Brand />
-        <div className="flex-1 overflow-y-auto py-2 scrollbar-thin">
-          <SidebarNav role={profile.role} />
-        </div>
-        <div className="border-t p-4 text-xs text-muted-foreground">
-          v1.0 · {demoMode ? "Demo data" : "Live data"}
-        </div>
-      </aside>
+    <div className="flex min-h-screen flex-col">
+      <header className="sticky top-0 z-40 glass border-b">
+        <div className="flex h-16 items-center gap-4 px-4 lg:px-8">
+          <Brand />
 
-      {/* Mobile slide-over */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/50"
-            onClick={() => setMobileOpen(false)}
-          />
-          <aside className="absolute left-0 top-0 flex h-full w-64 flex-col bg-card shadow-xl animate-in slide-in-from-left">
-            <div className="flex items-center justify-between pr-3">
-              <Brand />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setMobileOpen(false)}
-              >
-                <X className="h-5 w-5" />
-              </Button>
+          {/* Desktop pill nav */}
+          <div className="hidden flex-1 justify-center overflow-x-auto px-2 scrollbar-thin lg:flex">
+            <TopNav role={profile.role} />
+          </div>
+
+          <div className="ml-auto flex items-center gap-2">
+            {demoMode && (
+              <Badge variant="warning" className="hidden md:flex">
+                Demo Mode
+              </Badge>
+            )}
+            <IconButton
+              label="Search"
+              onClick={() => toast.info("ใช้ตัวกรองด้านบนของแต่ละหน้าเพื่อค้นหาข้อมูล")}
+            >
+              <Search className="h-4 w-4" />
+            </IconButton>
+            <IconButton label="Notifications" dot onClick={() => toast.info("ไม่มีการแจ้งเตือนใหม่")}>
+              <Bell className="h-4 w-4" />
+            </IconButton>
+            <ThemeToggle />
+            <UserMenu profile={profile} />
+
+            {/* Mobile menu toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={() => setMobileOpen((v) => !v)}
+              aria-label="Toggle menu"
+            >
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          </div>
+        </div>
+
+        {/* Mobile nav drawer */}
+        {mobileOpen && (
+          <div className="border-t px-4 py-3 lg:hidden">
+            <div className="overflow-x-auto scrollbar-thin">
+              <TopNav role={profile.role} onNavigate={() => setMobileOpen(false)} />
             </div>
-            <div className="flex-1 overflow-y-auto py-2">
-              <SidebarNav
-                role={profile.role}
-                onNavigate={() => setMobileOpen(false)}
-              />
-            </div>
-          </aside>
-        </div>
-      )}
+          </div>
+        )}
+      </header>
 
-      {/* Main column */}
-      <div className="flex min-w-0 flex-col">
-        <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur lg:px-8">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={() => setMobileOpen(true)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          <div className="flex-1" />
-          {demoMode && (
-            <Badge variant="warning" className="hidden sm:flex">
-              Demo Mode
-            </Badge>
-          )}
-          <ThemeToggle />
-          <UserMenu profile={profile} />
-        </header>
+      <main className="mx-auto w-full max-w-[1600px] flex-1 space-y-6 p-4 lg:p-8">
+        {children}
+      </main>
 
-        <main className={cn("flex-1 space-y-6 p-4 lg:p-8")}>{children}</main>
-      </div>
+      <footer className="border-t px-4 py-4 text-center text-xs text-muted-foreground lg:px-8">
+        SM Analytics v1.0 · {demoMode ? "Demo data" : "Live data"}
+      </footer>
     </div>
   );
 }
