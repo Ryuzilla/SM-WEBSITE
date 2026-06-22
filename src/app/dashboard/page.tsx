@@ -45,6 +45,25 @@ export default function OverviewPage() {
       />
 
       <FilterBar />
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <HighlightCard
+            eyebrow="Premium Insight"
+            value={formatCurrency(analytics.kpis.totalRevenue, { compact: true })}
+            title="ยอดขายรวมทั้งหมด"
+            description="ดูรายงานเชิงลึก แนวโน้ม และพยากรณ์รายเดือนแบบละเอียด พร้อมส่งออก PDF/Excel"
+            ctaLabel="สร้างรายงาน"
+            href="/dashboard/reports"
+          />
+        </div>
+        {salesMix.length > 0 && (
+          <ChartCard title="Sales Mix" description="Revenue share by top company">
+            <BubbleChart segments={salesMix} height={260} />
+          </ChartCard>
+        )}
+      </div>
+
       <KpiGrid />
 
       <div className="grid gap-4 lg:grid-cols-3">
