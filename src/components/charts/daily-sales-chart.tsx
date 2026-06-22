@@ -35,6 +35,12 @@ export function DailyRevenueChart({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <ComposedChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 0 }}>
+        <defs>
+          <linearGradient id="dailyRevFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.35} />
+            <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+          </linearGradient>
+        </defs>
         <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
         <XAxis dataKey="label" {...axisProps} minTickGap={24} />
         <YAxis
@@ -44,13 +50,15 @@ export function DailyRevenueChart({
         />
         <Tooltip content={<ChartTooltip />} />
         <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-        <Line
+        <Area
           type="monotone"
           dataKey="revenue"
           name="Daily Revenue"
           stroke="hsl(var(--chart-1))"
-          strokeWidth={2.5}
+          strokeWidth={3}
+          fill="url(#dailyRevFill)"
           dot={false}
+          activeDot={{ r: 5, strokeWidth: 0 }}
         />
         <Line
           type="monotone"

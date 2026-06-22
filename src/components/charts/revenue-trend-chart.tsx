@@ -1,10 +1,11 @@
 "use client";
 
 import {
+  Area,
   CartesianGrid,
+  ComposedChart,
   Legend,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -27,7 +28,13 @@ export function RevenueTrendChart({
 }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 0 }}>
+      <ComposedChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 0 }}>
+        <defs>
+          <linearGradient id="revFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.35} />
+            <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+          </linearGradient>
+        </defs>
         <CartesianGrid
           strokeDasharray="3 3"
           className="stroke-border"
@@ -51,14 +58,15 @@ export function RevenueTrendChart({
         />
         <Tooltip content={<ChartTooltip />} />
         <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-        <Line
+        <Area
           type="monotone"
           dataKey="revenue"
           name="Revenue"
           stroke="hsl(var(--chart-1))"
-          strokeWidth={2.5}
+          strokeWidth={3}
+          fill="url(#revFill)"
           dot={false}
-          activeDot={{ r: 5 }}
+          activeDot={{ r: 5, strokeWidth: 0 }}
         />
         {showPreviousYear && (
           <Line
@@ -84,7 +92,7 @@ export function RevenueTrendChart({
             connectNulls
           />
         )}
-      </LineChart>
+      </ComposedChart>
     </ResponsiveContainer>
   );
 }
