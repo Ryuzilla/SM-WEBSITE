@@ -31,6 +31,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Claude Code agent runtime files
+.agents/
+.claude/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
