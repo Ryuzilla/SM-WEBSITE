@@ -1,0 +1,6 @@
+# Skills and agent files — not needed in Vercel deployment
+.agents/
+.claude/
+
+# Local dev tools
+skills-lock.json
