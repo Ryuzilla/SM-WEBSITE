@@ -33,51 +33,52 @@
     --ring: 221 83% 53%;
 
     --chart-1: 221 83% 53%;
-    --chart-2: 160 84% 39%;
-    --chart-3: 38 92% 50%;
-    --chart-4: 271 81% 56%;
-    --chart-5: 339 82% 52%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 230 70% 60%;
+    --chart-4: 262 83% 58%;
+    --chart-5: 38 92% 50%;
 
     --radius: 0.75rem;
     --png-bg: #ffffff;
   }
 
   .dark {
-    --background: 225 44% 5%;
-    --foreground: 210 40% 98%;
+    --background: 0 0% 4%;
+    --foreground: 0 0% 96%;
 
-    --card: 224 34% 8%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 96%;
 
-    --popover: 224 34% 9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 96%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 11%;
+    /* Neon lime — the signature editorial accent */
+    --primary: 74 95% 57%;
+    --primary-foreground: 0 0% 4%;
 
-    --secondary: 222 26% 14%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 0 0% 96%;
 
-    --muted: 222 26% 14%;
-    --muted-foreground: 215 20% 64%;
+    --muted: 0 0% 11%;
+    --muted-foreground: 0 0% 52%;
 
-    --accent: 222 26% 16%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 0 0% 14%;
+    --accent-foreground: 0 0% 96%;
 
     --destructive: 0 63% 48%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 0 0% 96%;
 
-    --border: 222 26% 15%;
-    --input: 222 26% 17%;
-    --ring: 217 91% 60%;
+    --border: 0 0% 13%;
+    --input: 0 0% 14%;
+    --ring: 74 95% 57%;
 
-    --chart-1: 217 91% 60%;
+    --chart-1: 74 95% 57%;
     --chart-2: 160 84% 45%;
-    --chart-3: 38 92% 55%;
-    --chart-4: 271 81% 66%;
-    --chart-5: 339 82% 62%;
+    --chart-3: 38 92% 52%;
+    --chart-4: 199 89% 52%;
+    --chart-5: 262 83% 65%;
 
-    --png-bg: #07090f;
+    --png-bg: #0a0a0a;
   }
 }
 
@@ -89,11 +90,12 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
-  /* Ambient premium backdrop — subtle blue glow pools behind the dark UI. */
+  /* Dark editorial: subtle grid lines on pure black */
   .dark body {
     background-image:
-      radial-gradient(60rem 60rem at 110% -10%, hsl(217 91% 60% / 0.10), transparent 60%),
-      radial-gradient(50rem 50rem at -10% 110%, hsl(271 81% 66% / 0.08), transparent 55%);
+      linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
     background-attachment: fixed;
   }
 }
@@ -108,10 +110,10 @@
     @apply rounded-full bg-border;
   }
   .gradient-text {
-    @apply bg-gradient-to-r from-primary to-chart-4 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-primary to-chart-5 bg-clip-text text-transparent;
   }
 
-  /* Premium card surface: faint top-light gradient + soft depth shadow. */
+  /* Card surface */
   .surface {
     background-image: linear-gradient(
       180deg,
@@ -122,13 +124,17 @@
   .dark .surface {
     box-shadow:
       0 1px 0 0 hsl(0 0% 100% / 0.04) inset,
-      0 18px 40px -24px hsl(225 60% 2% / 0.9);
+      0 18px 40px -24px hsl(0 0% 0% / 0.9);
   }
-  /* Glassy bar used by the top navigation. */
+  /* Glassy top bar */
   .glass {
-    @apply bg-background/70 backdrop-blur-xl;
+    @apply bg-background/80 backdrop-blur-xl;
   }
   .dark .glass {
-    background-color: hsl(225 44% 5% / 0.7);
+    background-color: hsl(0 0% 4% / 0.85);
+  }
+  /* Lime glow — for active/primary elements in dark mode */
+  .glow-primary {
+    box-shadow: 0 0 20px -4px hsl(var(--primary) / 0.5);
   }
 }

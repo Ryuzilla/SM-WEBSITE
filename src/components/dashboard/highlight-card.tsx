@@ -1,12 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, Sparkles } from "lucide-react";
+import { ArrowUpRight, Zap } from "lucide-react";
 
-/**
- * Vibrant gradient call-to-action panel — the showpiece "premium" card from the
- * reference dashboards. Big stat, supporting copy, and a contrasting action.
- */
 export function HighlightCard({
   eyebrow,
   value,
@@ -23,26 +19,26 @@ export function HighlightCard({
   href: string;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 p-6 text-white shadow-[0_20px_50px_-20px_rgb(79_70_229/0.8)]">
-      {/* Decorative glows */}
-      <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/15 blur-2xl" />
-      <div className="pointer-events-none absolute -bottom-12 -left-8 h-40 w-40 rounded-full bg-cyan-300/20 blur-2xl" />
+    <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-card p-6">
+      {/* Lime glow spot */}
+      <div className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full bg-primary/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-10 -left-6 h-32 w-32 rounded-full bg-primary/5 blur-2xl" />
 
       <div className="relative">
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-xs font-medium backdrop-blur">
-          <Sparkles className="h-3.5 w-3.5" />
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+          <Zap className="h-3 w-3" />
           {eyebrow}
         </div>
 
-        <div className="mt-4 flex items-end gap-2">
-          <p className="text-4xl font-bold tracking-tight">{value}</p>
+        <div className="mt-4">
+          <p className="font-display text-4xl font-bold tracking-tight">{value}</p>
         </div>
-        <p className="mt-1 text-lg font-semibold">{title}</p>
-        <p className="mt-1 max-w-xs text-sm text-white/80">{description}</p>
+        <p className="mt-1 text-base font-semibold">{title}</p>
+        <p className="mt-1 max-w-xs text-sm text-muted-foreground">{description}</p>
 
         <Link
           href={href}
-          className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-indigo-700 transition-transform hover:scale-[1.03]"
+          className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground transition-all hover:opacity-90 glow-primary"
         >
           {ctaLabel}
           <ArrowUpRight className="h-4 w-4" />

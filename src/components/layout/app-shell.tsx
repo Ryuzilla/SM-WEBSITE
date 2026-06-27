@@ -1,29 +1,16 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
-import { Bell, Menu, Search, TrendingUp, X } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Bell, Menu, RefreshCw, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { UserProfile } from "@/lib/types";
+import { NAV_ITEMS } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { TopNav } from "./top-nav";
+import { Sidebar } from "./sidebar";
 import { UserMenu } from "./user-menu";
-
-function Brand() {
-  return (
-    <Link aria-label="SM Analytics home" href="/dashboard" className="flex items-center gap-2.5">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-chart-4 text-primary-foreground shadow-[0_6px_18px_-6px_hsl(var(--primary)/0.7)]">
-        <TrendingUp className="h-5 w-5" />
-      </div>
-      <div className="hidden leading-tight sm:block">
-        <p className="text-sm font-semibold tracking-tight">SM Analytics</p>
-        <p className="text-[11px] text-muted-foreground">Executive Suite</p>
-      </div>
-    </Link>
-  );
-}
 
 function IconButton({
   label,
@@ -51,6 +38,17 @@ function IconButton({
   );
 }
 
+/** Breadcrumb derived from the active route ("Dashboards / Overview"). */
+function useCrumb() {
+  const pathname = usePathname();
+  const match = [...NAV_ITEMS]
+    .sort((a, b) => b.href.length - a.href.length)
+    .find((i) =>
+      i.href === "/dashboard" ? pathname === i.href : pathname.startsWith(i.href),
+    );
+  return match?.title ?? "Overview";
+}
+
 export function AppShell({
   profile,
   demoMode,
@@ -61,66 +59,95 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const crumb = useCrumb();
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-40 glass border-b">
-        <div className="flex h-16 items-center gap-4 px-4 lg:px-8">
-          <Brand />
+    <div className="flex min-h-dvh">
+      {/* Desktop sidebar */}
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 border-r bg-card/40 backdrop-blur-xl lg:block">
+        <Sidebar profile={profile} />
+      </aside>
 
-          {/* Desktop pill nav */}
-          <div className="hidden flex-1 justify-center overflow-x-auto px-2 scrollbar-thin lg:flex">
-            <TopNav role={profile.role} />
-          </div>
+      {/* Mobile drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div
+            className="absolute inset-0 bg-background/60 backdrop-blur-sm"
+            onClick={() => setMobileOpen(false)}
+          />
+          <aside className="absolute left-0 top-0 h-full w-72 border-r bg-card shadow-2xl">
+            <div className="flex justify-end p-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMobileOpen(false)}
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <Sidebar profile={profile} onNavigate={() => setMobileOpen(false)} />
+          </aside>
+        </div>
+      )}
 
-          <div className="ml-auto flex items-center gap-2">
-            {demoMode && (
-              <Badge variant="warning" className="hidden md:flex">
-                Demo Mode
-              </Badge>
-            )}
-            <IconButton
-              label="Search"
-              onClick={() => toast.info("ใช้ตัวกรองด้านบนของแต่ละหน้าเพื่อค้นหาข้อมูล")}
-            >
-              <Search className="h-4 w-4" />
-            </IconButton>
-            <IconButton label="Notifications" dot onClick={() => toast.info("ไม่มีการแจ้งเตือนใหม่")}>
-              <Bell className="h-4 w-4" />
-            </IconButton>
-            <ThemeToggle />
-            <UserMenu profile={profile} />
-
-            {/* Mobile menu toggle */}
+      {/* Main column */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-40 glass border-b">
+          <div className="flex h-16 items-center gap-3 px-4 lg:px-8">
             <Button
               variant="ghost"
               size="icon"
               className="lg:hidden"
-              onClick={() => setMobileOpen((v) => !v)}
-              aria-label="Toggle menu"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open menu"
             >
-              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              <Menu className="h-5 w-5" />
             </Button>
-          </div>
-        </div>
 
-        {/* Mobile nav drawer */}
-        {mobileOpen && (
-          <div className="border-t px-4 py-3 lg:hidden">
-            <div className="overflow-x-auto scrollbar-thin">
-              <TopNav role={profile.role} onNavigate={() => setMobileOpen(false)} />
+            {/* Breadcrumb */}
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-muted-foreground">Dashboards</span>
+              <span className="text-muted-foreground/40">/</span>
+              <span className="font-semibold">{crumb}</span>
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              {demoMode && (
+                <Badge variant="warning" className="hidden md:flex">
+                  Demo Mode
+                </Badge>
+              )}
+              <IconButton
+                label="Search"
+                onClick={() => toast.info("ใช้ตัวกรองด้านบนของแต่ละหน้าเพื่อค้นหาข้อมูล")}
+              >
+                <Search className="h-4 w-4" />
+              </IconButton>
+              <IconButton label="Refresh" onClick={() => window.location.reload()}>
+                <RefreshCw className="h-4 w-4" />
+              </IconButton>
+              <IconButton
+                label="Notifications"
+                dot
+                onClick={() => toast.info("ไม่มีการแจ้งเตือนใหม่")}
+              >
+                <Bell className="h-4 w-4" />
+              </IconButton>
+              <ThemeToggle />
+              <UserMenu profile={profile} />
             </div>
           </div>
-        )}
-      </header>
+        </header>
 
-      <main className="mx-auto w-full max-w-[1600px] flex-1 space-y-6 p-4 lg:p-8">
-        {children}
-      </main>
+        <main className="mx-auto w-full max-w-[1600px] flex-1 space-y-6 p-4 lg:p-8">
+          {children}
+        </main>
 
-      <footer className="border-t px-4 py-4 text-center text-xs text-muted-foreground lg:px-8">
-        SM Analytics v1.0 · {demoMode ? "Demo data" : "Live data"}
-      </footer>
+        <footer className="border-t px-4 py-4 text-center text-xs text-muted-foreground lg:px-8">
+          SM Analytics v1.0 · {demoMode ? "Demo data" : "Live data"}
+        </footer>
+      </div>
     </div>
   );
 }
