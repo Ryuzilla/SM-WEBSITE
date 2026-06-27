@@ -58,17 +58,20 @@ export default function OverviewPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page heading */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* Page heading — editorial */}
+      <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Welcome back, {profile.full_name?.split(" ")[0] ?? "Executive"}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Your real-time sales performance at a glance.
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+            Sales Dashboard · Real-time
           </p>
+          <h1 className="font-display text-4xl font-bold tracking-tight">
+            Welcome,{" "}
+            <span className="text-primary">
+              {profile.full_name?.split(" ")[0] ?? "Executive"}
+            </span>
+          </h1>
         </div>
-        <Badge variant="secondary" className="gap-1.5 px-3 py-1.5">
+        <Badge variant="secondary" className="gap-1.5 px-3 py-1.5 text-xs">
           <CalendarDays className="h-3.5 w-3.5" />
           {analytics.recordCount.toLocaleString()} records
         </Badge>
@@ -87,14 +90,14 @@ export default function OverviewPage() {
               icon={Banknote}
               change={k.monthlyGrowthRate}
               hint="vs last month"
-              accent="bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-[0_8px_20px_-8px_rgb(59_130_246/0.8)]"
+              accent="bg-primary/15 text-primary"
             />
             <KpiCard
               title="Avg Order Value"
               value={formatCurrency(k.averageOrderValue)}
               icon={Wallet}
               hint="per invoice"
-              accent="bg-gradient-to-br from-sky-500 to-cyan-600 text-white shadow-[0_8px_20px_-8px_rgb(14_165_233/0.8)]"
+              accent="bg-chart-2/15 text-chart-2"
             />
             <GaugeKpi value={k.targetAchievement} target={k.revenueTarget} />
             <KpiCard
@@ -102,7 +105,7 @@ export default function OverviewPage() {
               value={formatNumber(k.totalOrders)}
               icon={Receipt}
               hint="unique invoices"
-              accent="bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-[0_8px_20px_-8px_rgb(99_102_241/0.8)]"
+              accent="bg-chart-4/15 text-chart-4"
             />
           </div>
 

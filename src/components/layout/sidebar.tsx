@@ -40,16 +40,16 @@ export function Sidebar({
 
   return (
     <div className="flex h-full flex-col gap-6 p-4">
-      {/* Brand + user identity */}
+      {/* Brand — editorial slash style */}
       <div className="flex items-center gap-3 px-1 pt-1">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-chart-3 text-primary-foreground shadow-[0_8px_22px_-8px_hsl(var(--primary)/0.8)]">
-          <TrendingUp className="h-5 w-5" />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <TrendingUp className="h-4 w-4" />
         </div>
         <div className="min-w-0 leading-tight">
-          <p className="truncate text-sm font-semibold tracking-tight">
-            {profile.full_name ?? "SM Analytics"}
+          <p className="truncate font-display text-sm font-bold tracking-tight">
+            SM<span className="text-primary">/</span>ANALYTICS
           </p>
-          <p className="truncate text-[11px] capitalize text-muted-foreground">
+          <p className="truncate text-[10px] uppercase tracking-widest text-muted-foreground">
             {profile.role}
           </p>
         </div>
@@ -88,7 +88,7 @@ export function Sidebar({
                     className={cn(
                       "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all",
                       active
-                        ? "bg-primary text-primary-foreground shadow-[0_8px_20px_-8px_hsl(var(--primary)/0.7)]"
+                        ? "bg-primary text-primary-foreground glow-primary"
                         : "text-muted-foreground hover:bg-foreground/5 hover:text-foreground",
                     )}
                   >
