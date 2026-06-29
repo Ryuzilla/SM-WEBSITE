@@ -52,9 +52,9 @@
     --popover: 0 0% 8%;
     --popover-foreground: 0 0% 96%;
 
-    /* Neon lime — the signature editorial accent */
-    --primary: 74 95% 57%;
-    --primary-foreground: 0 0% 4%;
+    /* Navy blue — the signature editorial accent */
+    --primary: 220 85% 58%;
+    --primary-foreground: 0 0% 98%;
 
     --secondary: 0 0% 11%;
     --secondary-foreground: 0 0% 96%;
@@ -70,9 +70,9 @@
 
     --border: 0 0% 13%;
     --input: 0 0% 14%;
-    --ring: 74 95% 57%;
+    --ring: 220 85% 58%;
 
-    --chart-1: 74 95% 57%;
+    --chart-1: 220 85% 58%;
     --chart-2: 160 84% 45%;
     --chart-3: 38 92% 52%;
     --chart-4: 199 89% 52%;
@@ -133,7 +133,7 @@
   .dark .glass {
     background-color: hsl(0 0% 4% / 0.85);
   }
-  /* Lime glow — for active/primary elements in dark mode */
+  /* Navy blue glow — for active/primary elements in dark mode */
   .glow-primary {
     box-shadow: 0 0 20px -4px hsl(var(--primary) / 0.5);
   }
